@@ -105,9 +105,9 @@
                 };
             var random = Math.random;
             var config = {
-                o: 0.8,
+                o: 0.9,
                 c: '255,255,255',
-                n: 100
+                n: 80
             };
 
             function set_canvas_size() {
@@ -161,7 +161,10 @@
                     r.y += r.ya;
                     r.xa *= r.x > canvas_width || r.x < 0 ? -1 : 1;
                     r.ya *= r.y > canvas_height || r.y < 0 ? -1 : 1;
-                    context.fillRect(r.x - 0.5, r.y - 0.5, 1, 1);
+                    context.beginPath();
+                    context.arc(r.x, r.y, 2, 0, Math.PI * 2);
+                    context.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                    context.fill();
 
                     for (i = idx + 1; i < all_array.length; i++) {
                         e = all_array[i];
@@ -176,8 +179,8 @@
                                 ),
                                 d = (e.max - dist) / e.max,
                                 context.beginPath(),
-                                context.lineWidth = d / 2,
-                                context.strokeStyle = "rgba(" + config.c + "," + (d / 2) + ")",
+                                context.lineWidth = d * 1.5,
+                                context.strokeStyle = "rgba(255, 255, 255, " + Math.min(d, 0.8) + ")",
                                 context.moveTo(r.x, r.y),
                                 context.lineTo(e.x, e.y),
                                 context.stroke()
