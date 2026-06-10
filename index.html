@@ -25,6 +25,8 @@
             padding: 60px 80px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             text-align: center;
+            position: relative;
+            z-index: 10;
         }
         h1 {
             font-size: 2.5rem;
@@ -66,9 +68,19 @@
             color: #999;
             font-size: 0.9rem;
         }
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
+    <canvas id="particle-canvas"></canvas>
     <div class="container">
         <h1>Momda_X网站导航</h1>
         <p class="subtitle">选择您要访问的网站</p>
@@ -80,5 +92,109 @@
             © 2026 网站导航
         </div>
     </div>
+
+    <script>
+        function startParticles() {
+            var the_canvas = document.getElementById('particle-canvas');
+            var context = the_canvas.getContext('2d');
+            var canvas_width, canvas_height;
+            var frame_func = window.requestAnimationFrame || window.webkitRequestAnimationFrame ||
+                window.mozRequestAnimationFrame || window.oRequestAnimationFrame ||
+                window.msRequestAnimationFrame || function (func) {
+                    window.setTimeout(func, 1000 / 40);
+                };
+            var random = Math.random;
+            var config = {
+                o: 0.8,
+                c: '255,255,255',
+                n: 100
+            };
+
+            function set_canvas_size() {
+                canvas_width = the_canvas.width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+                canvas_height = the_canvas.height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
+            }
+
+            set_canvas_size();
+            window.onresize = set_canvas_size;
+
+            var current_point = {
+                x: null,
+                y: null,
+                max: 20000
+            };
+
+            window.onmousemove = function (e) {
+                e = e || window.event;
+                current_point.x = e.clientX;
+                current_point.y = e.clientY;
+            };
+
+            window.onmouseout = function () {
+                current_point.x = null;
+                current_point.y = null;
+            };
+
+            var random_points = [];
+            for (var i = 0; config.n > i; i++) {
+                var x = random() * canvas_width,
+                    y = random() * canvas_height,
+                    xa = 2 * random() - 1,
+                    ya = 2 * random() - 1;
+                random_points.push({
+                    x: x,
+                    y: y,
+                    xa: xa,
+                    ya: ya,
+                    max: 6000
+                });
+            }
+
+            var all_array = random_points.concat([current_point]);
+
+            function draw_canvas() {
+                context.clearRect(0, 0, canvas_width, canvas_height);
+                var e, i, d, x_dist, y_dist, dist;
+
+                random_points.forEach(function (r, idx) {
+                    r.x += r.xa;
+                    r.y += r.ya;
+                    r.xa *= r.x > canvas_width || r.x < 0 ? -1 : 1;
+                    r.ya *= r.y > canvas_height || r.y < 0 ? -1 : 1;
+                    context.fillRect(r.x - 0.5, r.y - 0.5, 1, 1);
+
+                    for (i = idx + 1; i < all_array.length; i++) {
+                        e = all_array[i];
+                        if (null !== e.x && null !== e.y) {
+                            x_dist = r.x - e.x;
+                            y_dist = r.y - e.y;
+                            dist = x_dist * x_dist + y_dist * y_dist;
+                            dist < e.max && (
+                                e === current_point && dist >= e.max / 2 && (
+                                    r.x -= 0.03 * x_dist,
+                                    r.y -= 0.03 * y_dist
+                                ),
+                                d = (e.max - dist) / e.max,
+                                context.beginPath(),
+                                context.lineWidth = d / 2,
+                                context.strokeStyle = "rgba(" + config.c + "," + (d / 2) + ")",
+                                context.moveTo(r.x, r.y),
+                                context.lineTo(e.x, e.y),
+                                context.stroke()
+                            );
+                        }
+                    }
+                });
+
+                frame_func(draw_canvas);
+            }
+
+            setTimeout(function () {
+                draw_canvas();
+            }, 100);
+        }
+
+        window.addEventListener('DOMContentLoaded', startParticles);
+    </script>
 </body>
 </html>
