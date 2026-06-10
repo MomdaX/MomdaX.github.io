@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>铁路轨道3D示意图 - 钢轨与枕木 | Three.js</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', 'Poppins', 'Microsoft YaHei', sans-serif;
+        }
+        
+        /* 极简提示信息，仅用于展示操作说明，不干扰视觉 */
+        .info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(5px);
+            color: #e0e0e0;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+            pointer-events: none;
+            z-index: 10;
+            font-weight: 400;
+            border-left: 3px solid #aaa;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+        }
+        
+        .info a {
+            color: #ccc;
+            text-decoration: none;
+            pointer-events: auto;
+        }
+        
+        @media (max-width: 600px) {
+            .info { font-size: 10px; bottom: 12px; left: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="info">
+        🖱️ 鼠标拖拽旋转视角 | 右键平移 | 滚动缩放 | 纯工程示意 · 钢轨 + 等距枕木
+    </div>
+
+    <!-- 引入 Three.js 核心库以及扩展组件 -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        // --- 初始化场景、相机、渲染器 (极简高效) ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x111217);  // 深灰科技感背景，干净且突出模型
+        scene.fog = null; // 无雾效，保持极致清晰
+
+        // 透视相机 (视野, 宽高比, 近平面, 远平面)
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(6, 4.5, 8);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = false;   // 为极致性能，关闭阴影映射 (示意图光照足够，不增加开销)
+        renderer.setClearColor(0x111217, 1);
+        document.body.appendChild(renderer.domElement);
+
+        // --- 轨道控制器 (支持旋转/缩放/平移，交互流畅) ---
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;          // 惯性效果
+        controls.dampingFactor = 0.05;
+        controls.rotateSpeed = 1.2;
+        controls.zoomSpeed = 1.2;
+        controls.panSpeed = 0.8;
+        controls.enableZoom = true;
+        controls.enablePan = true;
+        controls.zoomSpeed = 1.0;
+        controls.target.set(0, 0.2, 0);
+        
+        // --- 极简辅助元素：可选的极细 GridHelper (仅用于参考空间，极简半透明，不破坏设计纯净感) ---
+        // 使用灰色半透明网格，帮助理解地面水平，完全不影响轨道的视觉主体
+        const gridHelper = new THREE.GridHelper(22, 20, 0x88aaff, 0x335588);
+        gridHelper.position.y = -0.25;
+        gridHelper.material.transparent = true;
+        gridHelper.material.opacity = 0.28;
+        scene.add(gridHelper);
+        
+        // 可选极简轴线 (非常 subtle 的轴线，辅助观察方向，不干扰设计感)
+        // 创建淡淡的坐标轴辅助线 (红X, 绿Z)，但为了极简风格，调低亮度且不加Y轴，避免杂乱
+        // 使用 AxesHelper 但降低透明度难度较高，手动添加半透明线条代替极简轴参考
+        const axesLineMaterial = new THREE.LineBasicMaterial({ color: 0x557799, transparent: true, opacity: 0.2 });
+        const xAxisLine = new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-12, -0.2, 0), new THREE.Vector3(12, -0.2, 0)]),
+            axesLineMaterial
+        );
+        const zAxisLine = new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, -0.2, -12), new THREE.Vector3(0, -0.2, 12)]),
+            axesLineMaterial
+        );
+        scene.add(xAxisLine);
+        scene.add(zAxisLine);
+        
+        // --- 灯光系统 (明亮干净，凸显金属质感与木材纹理差异) ---
+        // 环境光 (均匀照亮，避免死角)
+        const ambientLight = new THREE.AmbientLight(0x404060, 0.65);
+        scene.add(ambientLight);
+        
+        // 主光源：方向光 (模拟顶光 + 侧光，凸显立体感)
+        const mainLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        mainLight.position.set(3, 5, 2);
+        scene.add(mainLight);
+        
+        // 辅助方向光 (背面补光，让暗部细节更柔和)
+        const backLight = new THREE.DirectionalLight(0x88aaff, 0.45);
+        backLight.position.set(-2, 2, -3);
+        scene.add(backLight);
+        
+        // 从底部轻微补充暖色 (模拟地面反光，让枕木更自然)
+        const fillLight = new THREE.PointLight(0xccaa77, 0.25);
+        fillLight.position.set(0, -1.2, 0);
+        scene.add(fillLight);
+        
+        // 一个冷色侧后方光源，增强金属质感
+        const rimLight = new THREE.PointLight(0x6699cc, 0.4);
+        rimLight.position.set(2, 1.5, -3);
+        scene.add(rimLight);
+        
+        // --- 核心模型参数 ---
+        // 轨道长度 (Z轴方向范围: -9.6 ～ 9.6，总长 19.2，视觉完整)
+        const trackLength = 19.2;
+        const halfLength = trackLength / 2;   // 9.6
+        // 轨距: 两条钢轨中心距离 (视觉标准)
+        const gauge = 2.0;          // 轨距宽度(中心到中心) 2.0 单位
+        const railHalfWidth = 0.12;  // 钢轨截面半宽 (实际宽0.24)
+        const railHeight = 0.28;     // 钢轨高度 (视觉立体感)
+        const railLength = trackLength;
+        
+        // 枕木参数
+        const sleeperWidth = 3.2;      // 枕木长度 (X轴方向，横跨钢轨并略突出)
+        const sleeperHeight = 0.12;    // 枕木厚度
+        const sleeperDepth = 0.45;     // 枕木宽度 (Z轴方向，即每根枕木的厚度)
+        const sleeperSpacing = 1.28;   // 枕木间距 (中心到中心，等距排列)
+        
+        // 钢轨材质 (金属质感，干净利落)
+        const railMaterial = new THREE.MeshStandardMaterial({
+            color: 0xc0d0e0,
+            metalness: 0.85,
+            roughness: 0.35,
+            emissive: 0x000000,
+            flatShading: false
+        });
+        
+        // 枕木材质 (深色木质/复合材质，设计感哑光)
+        const sleeperMaterial = new THREE.MeshStandardMaterial({
+            color: 0x8b5a2b,
+            metalness: 0.08,
+            roughness: 0.7,
+            emissive: 0x221100,
+            flatShading: false
+        });
+        
+        // 可选: 钢轨顶面增加一点高亮材质质感，但统一材质已经足够好
+        
+        // --- 创建两条钢轨 (细长立方体，沿 Z 轴延伸)---
+        // 左轨 (X 负方向) 和 右轨 (X 正方向)
+        const railGeometry = new THREE.BoxGeometry(railHalfWidth * 2, railHeight, railLength);
+        
+        // 左轨位置: X = -gauge/2 , 为保证钢轨中心位置正好在轨距线上
+        const leftRail = new THREE.Mesh(railGeometry, railMaterial);
+        const rightRail = new THREE.Mesh(railGeometry, railMaterial);
+        
+        // 钢轨抬高使其坐落在枕木之上: 枕木上表面 Y = sleeperHeight/2 = 0.06, 钢轨底面比枕木上表面略高0.01 (视觉上自然衔接且无重叠闪烁)
+        // 钢轨中心 Y = sleeperHeight + railHeight/2 + 0.01
+        const railY = sleeperHeight + railHeight/2 + 0.012;
+        leftRail.position.set(-gauge / 2, railY, 0);
+        rightRail.position.set(gauge / 2, railY, 0);
+        
+        scene.add(leftRail);
+        scene.add(rightRail);
+        
+        // 可选优化: 在钢轨两端添加倒角感? (为保持极简，不加额外装饰，但可增加微小的端面盖帽，但无伤大雅)
+        
+        // --- 创建等距排列的枕木 (沿 Z 轴等距分布，覆盖钢轨全线)---
+        // 计算起始位置: 从 -halfLength + sleeperSpacing/2 开始，到 halfLength - sleeperSpacing/2，保证首尾对称美观
+        const startZ = -halfLength + (sleeperSpacing / 2);
+        const endZ = halfLength - (sleeperSpacing / 2);
+        const sleeperCount = Math.floor((endZ - startZ) / sleeperSpacing) + 1;
+        
+        // 创建枕木几何体 (复用同一几何体以优化性能)
+        const sleeperGeometry = new THREE.BoxGeometry(sleeperWidth, sleeperHeight, sleeperDepth);
+        
+        // 批量添加枕木
+        for (let i = 0; i < sleeperCount; i++) {
+            const zPos = startZ + i * sleeperSpacing;
+            // 确保不超出范围 (浮点边界情况下限制一下)
+            if (Math.abs(zPos) > halfLength + 0.2) continue;
+            
+            const sleeper = new THREE.Mesh(sleeperGeometry, sleeperMaterial);
+            // 枕木 Y 坐标: 底部落地效果，抬高地面轻微悬浮? 为了干净，直接置于 Y = 0 (地面接触感)
+            // 但为了视觉美观且与钢轨底部合理衔接，枕木顶面应支撑钢轨，这里位置设置 Y = sleeperHeight/2 = 0.06
+            sleeper.position.set(0, sleeperHeight / 2, zPos);
+            scene.add(sleeper);
+        }
+        
+        // 为了增加更加细腻的设计感，在钢轨顶部添加一条极其微弱的边缘高光线 (可忽略，但可选做极简装饰)
+        // 但为了保持干净绝对简单，不添加额外线条
+        
+        // 为了让枕木排列视觉效果更清晰，再额外确保两端的枕木位置恰到好处，手工做端部微调: 实际上上述循环已经均匀覆盖
+        
+        // --- 辅助视觉增强: 在钢轨外侧增加一道极细的引导线 (可选，增加设计稿中的结构指引) ---
+        // 保持纯工程示意，不加多余装饰。但为了强化“轨道”的专业感，添加两条半透明的参考线表示边界 (极简辅助示意)
+        const guideLineMaterial = new THREE.LineBasicMaterial({ color: 0x4a6c8f, transparent: true, opacity: 0.28 });
+        const leftGuidePoints = [];
+        const rightGuidePoints = [];
+        const guideZStart = -halfLength - 0.5;
+        const guideZEnd = halfLength + 0.5;
+        const yGuide = -0.15;
+        leftGuidePoints.push(new THREE.Vector3(-gauge/2 - 0.42, yGuide, guideZStart));
+        leftGuidePoints.push(new THREE.Vector3(-gauge/2 - 0.42, yGuide, guideZEnd));
+        rightGuidePoints.push(new THREE.Vector3(gauge/2 + 0.42, yGuide, guideZStart));
+        rightGuidePoints.push(new THREE.Vector3(gauge/2 + 0.42, yGuide, guideZEnd));
+        
+        const leftGuideLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(leftGuidePoints), guideLineMaterial);
+        const rightGuideLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(rightGuidePoints), guideLineMaterial);
+        scene.add(leftGuideLine);
+        scene.add(rightGuideLine);
+        
+        // 可以增加极简的枕木编号指示? 不需要，保持极致干净
+        
+        // 微小点缀: 为了体现现代感，可在钢轨顶面添加细微的反射光泽(通过环境贴图太复杂，但依靠灯光已足够)
+        
+        // 为提升钢轨的金属质感，再增加一个微弱的点光源从正面补充
+        const frontFill = new THREE.PointLight(0xaaccff, 0.35);
+        frontFill.position.set(0, 1.2, 4);
+        scene.add(frontFill);
+        
+        // 可选: 在钢轨两端添加极简半球光微弱补光
+        const hemiLight = new THREE.HemisphereLight(0x556688, 0x221c14, 0.35);
+        scene.add(hemiLight);
+        
+        // --- 添加小范围的地面参考圆环? 简洁起见不加，保持轨道主体 ---
+        
+        // --- 简单动画效果: 对于设计稿静止展示即可，但为了让场景更有呼吸感，可以添加极缓慢的相机自动旋转? 不需要，避免干扰用户控制 ---
+        
+        // --- 性能与渲染循环 ---
+        function animate() {
+            // 更新控制器状态
+            controls.update(); // 仅在启用 damping 或 autoRotate 时需要，但为了流畅交互，保留更新
+            
+            // 可选: 让 rimLight 缓慢移动增加一丝生命力? 为了极简且无多余动态，不做变动
+            
+            renderer.render(scene, camera);
+            requestAnimationFrame(animate);
+        }
+        
+        animate();
+        
+        // --- 窗口自适应 (响应式布局) ---
+        window.addEventListener('resize', onWindowResize, false);
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // 小优化：控制台输出提示，确保初始化完成
+        console.log('3D 铁路轨道示意图已启动 | 设计极简模式: 钢轨 + 等距枕木');
+        
+        // 可选: 增加一个极小的 CSS2D 文本标注（干净的“钢轨/枕木”示意），但为了极致简洁，不加文字，避免视觉干扰。
+        // 但为了满足演示友好，可以添加两个极简的半透明指示小球体？不，保证纯粹。
+        
+        // 确保钢轨和枕木的比例在视觉上和谐，且无任何多余网格体。
+        // 由于场景中 GridHelper 非常淡，且参考线半透明，整体干净且富有设计感。
+        
+        // 补充: 使钢轨更具质感，微小调整材质 roughness 和金属感，已经设置完毕。
+        // 最终效果: 两条平行钢轨光泽感强，枕木深褐色规律排布，并且相机可任意角度查看。
+        
+        // 附加小优化: 为了使枕木阴影概念更明确，虽然关闭了阴影映射，但光照角度产生的明暗变化足够区分层次。
+        // 场景加载极快，所有几何体复用，无冗余贴图，性能优秀。
+        
+        // 修改钢轨颜色微调：增加一丝冷色，更贴近工业风格
+        railMaterial.color.setHex(0xb8c8dc);
+        // 枕木暖色温润
+        sleeperMaterial.color.setHex(0x9c6e3e);
+        
+        // 稍微调整光源方向光强度，使钢轨顶面高光漂亮
+        mainLight.intensity = 1.1;
+        backLight.intensity = 0.5;
+        
+        // 最后确保所有元素完美呈现: 钢轨长度完全覆盖枕木区域，枕木间距一致，视觉无重叠异常
+        // 另在轨道两端终点处，枕木不会超出钢轨末端，循环控制已保证 zPos 在 [-halfLength, halfLength] 内
+        // 最终展示稳定
+    </script>
+</body>
+</html>

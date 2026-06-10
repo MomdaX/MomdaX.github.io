@@ -2,9 +2,10 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Momda_X网站导航</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>铁路轨道3D系统</title>
     <style>
+        /* 基础样式 - 保留原有视觉风格，但3D画布区域完全由Three.js接管 */
         * {
             margin: 0;
             padding: 0;
@@ -12,12 +13,14 @@
         }
 
         body {
-            font-family: 'Microsoft YaHei', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Microsoft YaHei', 'Segoe UI', 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #0b1120 0%, #19233c 100%);
             min-height: 100vh;
             overflow: hidden;
+            position: relative;
         }
 
+        /* 背景粒子画布 (装饰) */
         #particle-canvas {
             position: fixed;
             top: 0;
@@ -28,8 +31,9 @@
             pointer-events: none;
         }
 
+        /* 飘浮爱心背景 (装饰) */
         .bg_heart {
-            position: relative;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
@@ -44,23 +48,9 @@
             top: -50%;
             transform: rotate(-45deg);
         }
-
-        .heart:before {
-            position: absolute;
-            top: -50%;
-            left: 0;
-            display: block;
-            content: "";
-            width: 100%;
-            height: 100%;
-            background: inherit;
-            border-radius: 100%;
-        }
-
+        .heart:before,
         .heart:after {
             position: absolute;
-            top: 0;
-            right: -50%;
             display: block;
             content: "";
             width: 100%;
@@ -68,227 +58,224 @@
             background: inherit;
             border-radius: 100%;
         }
+        .heart:before { top: -50%; left: 0; }
+        .heart:after { top: 0; right: -50%; }
 
         @keyframes love {
-            0% {
-                top: 110%;
-                transform: rotate(-45deg) scale(1);
-            }
-            100% {
-                top: -50%;
-                transform: rotate(-45deg) scale(1.5);
-            }
+            0% { top: 110%; transform: rotate(-45deg) scale(1); }
+            100% { top: -50%; transform: rotate(-45deg) scale(1.5); }
         }
 
-        @-webkit-keyframes love {
-            0% {
-                top: 110%;
-                transform: rotate(-45deg) scale(1);
-            }
-            100% {
-                top: -50%;
-                transform: rotate(-45deg) scale(1.5);
-            }
-        }
-
-        @-moz-keyframes love {
-            0% {
-                top: 110%;
-                transform: rotate(-45deg) scale(1);
-            }
-            100% {
-                top: -50%;
-                transform: rotate(-45deg) scale(1.5);
-            }
-        }
-
-        @-ms-keyframes love {
-            0% {
-                top: 110%;
-                transform: rotate(-45deg) scale(1);
-            }
-            100% {
-                top: -50%;
-                transform: rotate(-45deg) scale(1.5);
-            }
-        }
-
-        .train-track {
-            position: fixed;
-            bottom: 15%;
-            left: 0;
-            width: 100%;
-            height: 12px;
-            z-index: 3;
-            pointer-events: none;
-        }
-
-        .track-bg {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 12px;
-            background: linear-gradient(90deg, #34495e 0%, #2c3e50 50%, #34495e 100%);
-            border-radius: 2px;
-        }
-
-        .track-lines {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-        }
-
-        .track-lines::before,
-        .track-lines::after {
-            content: '';
-            position: absolute;
-            top: 2px;
-            width: 100%;
-            height: 3px;
-            background: repeating-linear-gradient(90deg, #7f8c8d 0px, #7f8c8d 40px, transparent 40px, transparent 70px);
-        }
-
-        .track-lines::after {
-            top: auto;
-            bottom: 2px;
-        }
-
+        /* Three.js 画布容器 (占满整个视口) */
         #train-canvas {
             position: fixed;
-            bottom: 12%;
+            top: 0;
             left: 0;
             width: 100%;
-            height: 15%;
-            z-index: 4;
-            pointer-events: none;
+            height: 100%;
+            z-index: 10;
+            display: block;
+            outline: none;
+            cursor: grab;
+        }
+        #train-canvas:active {
+            cursor: grabbing;
         }
 
+        /* 音乐播放器样式 */
+        .music-player {
+            position: relative;
+            z-index: 30;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: rgba(20, 28, 40, 0.75);
+            backdrop-filter: blur(12px);
+            border-radius: 50px;
+            padding: 10px 20px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255,255,255,0.15);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        }
+        .music-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            background: rgba(255,255,255,0.15);
+            color: #fff;
+            transition: all 0.25s ease;
+        }
+        .music-btn:hover {
+            background: rgba(255,255,255,0.25);
+            transform: scale(1.08);
+        }
+        .music-btn.play-btn {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-size: 20px;
+        }
+        .music-btn.play-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .music-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .music-title {
+            color: #fff;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+        .music-artist {
+            color: rgba(255,255,255,0.65);
+            font-size: 0.8rem;
+        }
+        .progress-bar {
+            width: 180px;
+            height: 4px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 2px;
+            cursor: pointer;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 2px;
+            transition: width 0.1s linear;
+        }
+        .time-display {
+            color: rgba(255,255,255,0.7);
+            font-size: 0.75rem;
+            min-width: 80px;
+            text-align: right;
+        }
+
+        /* UI 导航面板 (位于上半部分) */
         .container {
             position: relative;
-            z-index: 10;
+            z-index: 30;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            padding: 20px;
+            justify-content: flex-start;
+            min-height: 45vh;
+            padding: 60px 20px 20px;
+            margin-top: 40px;
+            pointer-events: none;
+        }
+        .container h1,
+        .container .subtitle,
+        .links,
+        .nav-wall,
+        .footer {
+            pointer-events: auto;
         }
 
         h1 {
             font-size: 2.5rem;
             color: #fff;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            text-shadow: 0 4px 12px rgba(0,0,0,0.3);
             margin-bottom: 10px;
+            letter-spacing: 1px;
         }
-
         .subtitle {
-            color: rgba(255, 255, 255, 0.8);
-            font-size: 1.1rem;
-            margin-bottom: 40px;
+            color: rgba(255,255,255,0.85);
+            font-size: 1rem;
+            margin-bottom: 30px;
+            backdrop-filter: blur(4px);
         }
-
         .links {
             display: flex;
-            gap: 30px;
+            gap: 25px;
             flex-wrap: wrap;
             justify-content: center;
             margin-bottom: 40px;
         }
-
         .link-btn {
             display: inline-block;
-            padding: 15px 40px;
-            font-size: 1.2rem;
+            padding: 12px 32px;
+            font-size: 1.1rem;
             font-weight: bold;
             color: #fff;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            border-radius: 50px;
+            background: linear-gradient(135deg, #3a6ea5, #2c3e66);
+            border-radius: 40px;
             text-decoration: none;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            transition: all 0.25s ease;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.25);
+            backdrop-filter: blur(2px);
+            border: 1px solid rgba(255,255,255,0.2);
         }
-
         .link-btn:hover {
             transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+            box-shadow: 0 12px 22px rgba(0,0,0,0.3);
+            background: linear-gradient(135deg, #4d7db8, #3a4f82);
         }
-
         .nav-wall {
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 30px;
+            background: rgba(20, 28, 40, 0.65);
+            backdrop-filter: blur(12px);
+            border-radius: 28px;
+            padding: 24px 28px;
             width: 100%;
-            max-width: 800px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            max-width: 860px;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 12px 28px rgba(0,0,0,0.2);
         }
-
         .nav-wall h2 {
-            color: #fff;
+            color: #f0f3fa;
             text-align: center;
-            margin-bottom: 20px;
-            font-size: 1.5rem;
+            margin-bottom: 18px;
+            font-weight: 500;
+            letter-spacing: 1px;
         }
-
         .nav-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
+            gap: 14px;
         }
-
         .nav-item {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-            padding: 15px 10px;
+            background: rgba(255,255,255,0.12);
+            border-radius: 18px;
+            padding: 12px 8px;
             text-align: center;
-            transition: all 0.3s ease;
+            transition: all 0.2s;
             cursor: pointer;
-            min-height: 80px;
+            min-height: 70px;
             display: flex;
             align-items: center;
             justify-content: center;
+            border: 1px solid rgba(255,255,255,0.1);
         }
-
         .nav-item:hover {
-            background: rgba(255, 255, 255, 0.3);
+            background: rgba(255,255,255,0.25);
             transform: translateY(-2px);
         }
-
         .nav-item a {
             color: #fff;
             text-decoration: none;
-            font-size: 0.9rem;
-            word-break: break-all;
-            line-height: 1.4;
+            font-size: 0.85rem;
+            font-weight: 500;
+            word-break: break-word;
         }
-
         .footer {
-            margin-top: 40px;
-            color: rgba(255, 255, 255, 0.6);
-            font-size: 0.9rem;
+            margin-top: 36px;
+            color: rgba(255,255,255,0.55);
+            font-size: 0.8rem;
+            text-align: center;
         }
-
-        @media (max-width: 768px) {
-            h1 {
-                font-size: 1.8rem;
-            }
-
-            .links {
-                flex-direction: column;
-                align-items: center;
-            }
-
-            .link-btn {
-                width: 100%;
-                max-width: 250px;
-                text-align: center;
-            }
-
-            .nav-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
+        @media (max-width: 700px) {
+            .nav-grid { grid-template-columns: repeat(2, 1fr); }
+            h1 { font-size: 1.8rem; }
+            .link-btn { padding: 8px 20px; font-size: 1rem; }
         }
     </style>
 </head>
@@ -296,19 +283,30 @@
     <canvas id="particle-canvas"></canvas>
     <div class="bg_heart"></div>
     <canvas id="train-canvas"></canvas>
-    <div class="train-track">
-        <div class="track-bg"></div>
-        <div class="track-lines"></div>
+    
+    <div class="music-player">
+        <button class="music-btn" id="prevBtn">⏮</button>
+        <button class="music-btn play-btn" id="playBtn">▶</button>
+        <button class="music-btn" id="nextBtn">⏭</button>
+        <div class="music-info">
+            <div class="music-title" id="musicTitle">Call Me Tonight</div>
+            <div class="music-artist" id="musicArtist">Unknown Artist</div>
+        </div>
+        <div class="progress-bar" id="progressBar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="time-display" id="timeDisplay">0:00 / 0:00</div>
     </div>
+    
     <div class="container">
-        <h1>Momda_X网站导航</h1>
-        <p class="subtitle">选择您要访问的网站</p>
+        <h1>🚆 Momda_X主页</h1>
+        <p class="subtitle">选择要打开的网站</p>
         <div class="links">
             <a href="dcjh/" class="link-btn">调车计划</a>
             <a href="tldt/" class="link-btn">铁路地图</a>
         </div>
         <div class="nav-wall">
-            <h2>常用网站</h2>
+            <h2>📌 常用导航</h2>
             <div class="nav-grid">
                 <div class="nav-item"><a href="https://github.com/MomdaX" target="_blank">MomdaX主页</a></div>
                 <div class="nav-item"><a href="https://www.npmjs.com/~momdax" target="_blank">Cnpmjs合集</a></div>
@@ -320,227 +318,232 @@
                 <div class="nav-item"><a href="https://doc.vb6.pro/" target="_blank">VB MAN/2</a></div>
             </div>
         </div>
-        <div class="footer">
-            © 2026 网站导航
-        </div>
+        <div class="footer">© 2026 铁路3D交互 | 鼠标拖拽旋转/右键平移/滚轮缩放</div>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="huoche/three.js"></script>
-    <script src="huoche/MTLLoader.js"></script>
-    <script src="huoche/OBJLoader.js"></script>
-    <script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "./huoche/three.module.js"
+        }
+    }
+    </script>
+    
+    <!-- 主脚本 -->
+    <script type="module">
+        import TrackBuilder from './huoche/TrackBuilder.js';
+        
+        window.addEventListener('DOMContentLoaded', () => {
+            startParticles();
+            startHeartAnimation();
+            
+            const railway = new TrackBuilder('train-canvas');
+            railway.init();
+            
+            window.railTrackSystem = railway;
+            
+            initMusicPlayer();
+        });
+        
         function startParticles() {
-            var the_canvas = document.getElementById('particle-canvas');
-            var context = the_canvas.getContext('2d');
-            var canvas_width, canvas_height;
-            var frame_func = window.requestAnimationFrame || window.webkitRequestAnimationFrame ||
-                window.mozRequestAnimationFrame || window.oRequestAnimationFrame ||
-                window.msRequestAnimationFrame || function (func) {
-                    window.setTimeout(func, 1000 / 40);
-                };
-            var random = Math.random;
-            var config = {
-                o: 0.9,
-                c: '255,255,255',
-                n: 80
-            };
-
-            function set_canvas_size() {
-                canvas_width = the_canvas.width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
-                canvas_height = the_canvas.height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
+            const canvas = document.getElementById('particle-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            let width, height;
+            let points = [];
+            const PARTICLE_COUNT = 65;
+            const CONNECT_DIST = 5500;
+            
+            function resizeCanvas() {
+                width = canvas.width = window.innerWidth;
+                height = canvas.height = window.innerHeight;
             }
-
-            set_canvas_size();
-            window.onresize = set_canvas_size;
-
-            var current_point = {
-                x: null,
-                y: null,
-                max: 20000
-            };
-
-            window.onmousemove = function (e) {
-                e = e || window.event;
-                current_point.x = e.clientX;
-                current_point.y = e.clientY;
-            };
-
-            window.onmouseout = function () {
-                current_point.x = null;
-                current_point.y = null;
-            };
-
-            var random_points = [];
-            for (var i = 0; config.n > i; i++) {
-                var x = random() * canvas_width,
-                    y = random() * canvas_height,
-                    xa = 2 * random() - 1,
-                    ya = 2 * random() - 1;
-                random_points.push({
-                    x: x,
-                    y: y,
-                    xa: xa,
-                    ya: ya,
-                    max: 6000
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+            
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                points.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    vx: (Math.random() - 0.5) * 0.6,
+                    vy: (Math.random() - 0.5) * 0.4 + 0.2,
                 });
             }
-
-            var all_array = random_points.concat([current_point]);
-
-            function draw_canvas() {
-                context.clearRect(0, 0, canvas_width, canvas_height);
-                var e, i, d, x_dist, y_dist, dist;
-
-                random_points.forEach(function (r, idx) {
-                    r.x += r.xa;
-                    r.y += r.ya;
-                    r.xa *= r.x > canvas_width || r.x < 0 ? -1 : 1;
-                    ya *= r.y > canvas_height || r.y < 0 ? -1 : 1;
-                    context.beginPath();
-                    context.arc(r.x, r.y, 2, 0, Math.PI * 2);
-                    context.fillStyle = 'rgba(255, 255, 255, 0.9)';
-                    context.fill();
-
-                    for (i = idx + 1; i < all_array.length; i++) {
-                        e = all_array[i];
-                        if (null !== e.x && null !== e.y) {
-                            x_dist = r.x - e.x;
-                            y_dist = r.y - e.y;
-                            dist = x_dist * x_dist + y_dist * y_dist;
-                            dist < e.max && (
-                                e === current_point && dist >= e.max / 2 && (
-                                    r.x -= 0.03 * x_dist,
-                                    r.y -= 0.03 * y_dist
-                                ),
-                                d = (e.max - dist) / e.max,
-                                context.beginPath(),
-                                context.lineWidth = d * 1.5,
-                                context.strokeStyle = "rgba(255, 255, 255, " + Math.min(d, 0.8) + ")",
-                                context.moveTo(r.x, r.y),
-                                context.lineTo(e.x, e.y),
-                                context.stroke()
-                            );
-                        }
-                    }
-                });
-
-                frame_func(draw_canvas);
-            }
-
-            setTimeout(function () {
-                draw_canvas();
-            }, 100);
-        }
-
-        window.addEventListener('DOMContentLoaded', startParticles);
-        
-        var love = setInterval(function(){
-            var r_num = Math.floor(Math.random() * 40) + 1;
-            var r_size = Math.floor(Math.random() * 65) + 10;
-            var r_left = Math.floor(Math.random() * 100) + 1;
-            var r_bg = Math.floor(Math.random() * 25) + 100;
-            var r_time = Math.floor(Math.random() * 5) + 5;
             
-            $('.bg_heart').append("<div class='heart' style='width:"+r_size+"px;height:"+r_size+"px;left:"+r_left+"%;background:rgba(255,"+(r_bg-25)+","+r_bg+",1);animation:love "+r_time+"s ease-in-out forwards;-webkit-animation:love "+r_time+"s ease-in-out forwards;-moz-animation:love "+r_time+"s ease-in-out forwards;-ms-animation:love "+r_time+"s ease-in-out forwards'></div>");
-            
-            $('.bg_heart').append("<div class='heart' style='width:"+(r_size-10)+"px;height:"+(r_size-10)+"px;left:"+(r_left+r_num)+"%;background:rgba(255,"+(r_bg-25)+","+(r_bg+25)+",1);animation:love "+(r_time+5)+"s ease-in-out forwards;-webkit-animation:love "+(r_time+5)+"s ease-in-out forwards;-moz-animation:love "+(r_time+5)+"s ease-in-out forwards;-ms-animation:love "+(r_time+5)+"s ease-in-out forwards'></div>");
-            
-            $('.heart').each(function(){
-                var top = parseFloat($(this).css("top"));
-                var width = parseFloat($(this).css("width"));
-                if(top <= -100 || width >= 150){
-                    $(this).remove();
+            function draw() {
+                if (!ctx) return;
+                ctx.clearRect(0, 0, width, height);
+                for (let p of points) {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    if (p.x < 0) p.x = width;
+                    if (p.x > width) p.x = 0;
+                    if (p.y < 0) p.y = height;
+                    if (p.y > height) p.y = 0;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 1.6, 0, Math.PI*2);
+                    ctx.fillStyle = 'rgba(210, 225, 255, 0.7)';
+                    ctx.fill();
                 }
-            });
-        }, 500);
-
-        function init3DTrain() {
-            var container = document.getElementById('train-canvas');
-            var width = container.offsetWidth;
-            var height = container.offsetHeight;
-            
-            var scene = new THREE.Scene();
-            var camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-            var renderer = new THREE.WebGLRenderer({ canvas: container, alpha: true });
-            
-            renderer.setSize(width, height);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.setClearColor(0x000000, 0);
-            
-            camera.position.set(0, 0.8, 4);
-            camera.lookAt(0, 0.1, 0);
-            
-            var ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-            scene.add(ambientLight);
-            
-            var directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
-            directionalLight.position.set(10, 10, 5);
-            scene.add(directionalLight);
-            
-            var train;
-            var currentPosition = -8;
-            var isPaused = false;
-            var pauseTimer = 0;
-            
-            var mtlLoader = new THREE.MTLLoader();
-            mtlLoader.load('huoche/huoche8.mtl', function(materials) {
-                materials.preload();
-                
-                var objLoader = new THREE.OBJLoader();
-                objLoader.setMaterials(materials);
-                objLoader.load('huoche/huoche8.obj', function(object) {
-                    train = object;
-                    train.scale.set(0.05, 0.05, 0.05);
-                    train.rotation.y = Math.PI;
-                    train.position.y = 0.05;
-                    train.position.x = currentPosition;
-                    train.position.z = 0;
-                    scene.add(train);
-                });
-            });
-            
-            function animate() {
-                requestAnimationFrame(animate);
-                
-                if (train) {
-                    if (!isPaused) {
-                        train.position.x += 0.03;
-                        currentPosition = train.position.x;
-                        
-                        if (currentPosition > 3) {
-                            isPaused = true;
-                            pauseTimer = Date.now();
+                for (let i = 0; i < points.length; i++) {
+                    for (let j = i+1; j < points.length; j++) {
+                        const dx = points[i].x - points[j].x;
+                        const dy = points[i].y - points[j].y;
+                        const dist = dx*dx + dy*dy;
+                        if (dist < CONNECT_DIST) {
+                            ctx.beginPath();
+                            ctx.moveTo(points[i].x, points[i].y);
+                            ctx.lineTo(points[j].x, points[j].y);
+                            ctx.strokeStyle = `rgba(140, 180, 255, ${0.25 * (1 - dist/CONNECT_DIST)})`;
+                            ctx.stroke();
                         }
-                    } else {
-                        var elapsed = Date.now() - pauseTimer;
-                        if (elapsed > 3000) {
-                            isPaused = false;
-                        }
-                    }
-                    
-                    if (currentPosition > 10) {
-                        train.position.x = -15;
-                        currentPosition = -15;
-                        isPaused = false;
                     }
                 }
-                
-                renderer.render(scene, camera);
+                requestAnimationFrame(draw);
             }
-            
-            animate();
-            
-            window.addEventListener('resize', function() {
-                var newWidth = container.offsetWidth;
-                var newHeight = container.offsetHeight;
-                camera.aspect = newWidth / newHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(newWidth, newHeight);
-            });
+            draw();
         }
         
-        setTimeout(init3DTrain, 500);
+        function startHeartAnimation() {
+            const heartContainer = document.querySelector('.bg_heart');
+            if (!heartContainer) return;
+            setInterval(() => {
+                const size = Math.floor(Math.random() * 45) + 18;
+                const left = Math.random() * 95;
+                const duration = Math.random() * 4 + 4;
+                const heart = document.createElement('div');
+                heart.className = 'heart';
+                heart.style.width = size + 'px';
+                heart.style.height = size + 'px';
+                heart.style.left = left + '%';
+                heart.style.backgroundColor = `rgba(255, ${120 + Math.random() * 80}, 150, 0.7)`;
+                heart.style.animation = `love ${duration}s ease-in forwards`;
+                heartContainer.appendChild(heart);
+                setTimeout(() => heart.remove(), duration * 1000);
+            }, 520);
+        }
+        
+        function initMusicPlayer() {
+            const audioFiles = [
+                { title: 'Call Me Tonight', artist: 'Unknown Artist', path: 'assets/audio/CallMe Tonight.mp3' }
+            ];
+            
+            let currentTrack = 0;
+            let audio = null;
+            const playBtn = document.getElementById('playBtn');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const progressBar = document.getElementById('progressBar');
+            const progressFill = document.getElementById('progressFill');
+            const timeDisplay = document.getElementById('timeDisplay');
+            const musicTitle = document.getElementById('musicTitle');
+            const musicArtist = document.getElementById('musicArtist');
+            
+            function initAudio() {
+                if (audio) {
+                    audio.pause();
+                    audio = null;
+                }
+                
+                const track = audioFiles[currentTrack];
+                audio = new Audio(track.path);
+                audio.loop = false;
+                
+                musicTitle.textContent = track.title;
+                musicArtist.textContent = track.artist;
+                
+                audio.addEventListener('timeupdate', updateProgress);
+                audio.addEventListener('loadedmetadata', updateDuration);
+                audio.addEventListener('ended', onTrackEnded);
+                audio.addEventListener('error', handleAudioError);
+            }
+            
+            function updateProgress() {
+                if (!audio) return;
+                const percent = (audio.currentTime / audio.duration) * 100;
+                progressFill.style.width = percent + '%';
+                updateTimeDisplay();
+            }
+            
+            function updateDuration() {
+                updateTimeDisplay();
+            }
+            
+            function updateTimeDisplay() {
+                if (!audio) return;
+                const current = formatTime(audio.currentTime);
+                const duration = formatTime(audio.duration);
+                timeDisplay.textContent = `${current} / ${duration}`;
+            }
+            
+            function formatTime(seconds) {
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${mins}:${secs.toString().padStart(2, '0')}`;
+            }
+            
+            function onTrackEnded() {
+                currentTrack = (currentTrack + 1) % audioFiles.length;
+                initAudio();
+                audio.play().catch(() => {});
+            }
+            
+            function handleAudioError(e) {
+                console.error('Audio error:', e);
+            }
+            
+            function togglePlay() {
+                if (!audio) {
+                    initAudio();
+                }
+                
+                if (audio.paused) {
+                    audio.play().catch(() => {
+                        playBtn.textContent = '▶';
+                    });
+                    playBtn.textContent = '⏸';
+                } else {
+                    audio.pause();
+                    playBtn.textContent = '▶';
+                }
+            }
+            
+            function prevTrack() {
+                currentTrack = (currentTrack - 1 + audioFiles.length) % audioFiles.length;
+                initAudio();
+                if (playBtn.textContent === '⏸') {
+                    audio.play().catch(() => {});
+                }
+            }
+            
+            function nextTrack() {
+                currentTrack = (currentTrack + 1) % audioFiles.length;
+                initAudio();
+                if (playBtn.textContent === '⏸') {
+                    audio.play().catch(() => {});
+                }
+            }
+            
+            function seekTo(e) {
+                if (!audio) return;
+                const rect = progressBar.getBoundingClientRect();
+                const percent = (e.clientX - rect.left) / rect.width;
+                audio.currentTime = percent * audio.duration;
+            }
+            
+            playBtn.addEventListener('click', togglePlay);
+            prevBtn.addEventListener('click', prevTrack);
+            nextBtn.addEventListener('click', nextTrack);
+            progressBar.addEventListener('click', seekTo);
+            
+            window.musicPlayer = {
+                play: togglePlay,
+                pause: () => { if (audio && !audio.paused) audio.pause(); },
+                next: nextTrack,
+                prev: prevTrack,
+                audio: audio
+            };
+        }
     </script>
 </body>
 </html>
