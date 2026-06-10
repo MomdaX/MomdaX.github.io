@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>导航主页</title>
+    <title>Momda_X主页</title>
     <style>
         * {
             margin: 0;
@@ -175,11 +175,191 @@
             0% { top: 110%; }
             100% { top: -50%; }
         }
+        .train-container {
+            position: fixed;
+            top: 60%;
+            left: 0;
+            width: 100%;
+            height: 80px;
+            z-index: 5;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .train {
+            position: absolute;
+            display: flex;
+            align-items: flex-end;
+            animation: trainMove 12s ease-in-out infinite;
+        }
+        .train-engine {
+            position: relative;
+            width: 60px;
+            height: 50px;
+        }
+        .engine-body {
+            position: absolute;
+            bottom: 12px;
+            left: 5px;
+            width: 50px;
+            height: 35px;
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            border-radius: 5px 5px 0 0;
+        }
+        .engine-body::before {
+            content: '';
+            position: absolute;
+            top: -15px;
+            left: 10px;
+            width: 30px;
+            height: 15px;
+            background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+            border-radius: 5px;
+        }
+        .engine-cabin {
+            position: absolute;
+            bottom: 25px;
+            right: 0;
+            width: 25px;
+            height: 20px;
+            background: linear-gradient(135deg, #27ae60 0%, #1e8449 100%);
+            border-radius: 3px;
+        }
+        .smoke {
+            position: absolute;
+            top: -30px;
+            right: -10px;
+            width: 40px;
+            height: 40px;
+        }
+        .smoke-particle {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: rgba(200, 200, 200, 0.6);
+            border-radius: 50%;
+            animation: smokeRise 1s ease-out infinite;
+        }
+        .smoke-particle:nth-child(1) { animation-delay: 0s; }
+        .smoke-particle:nth-child(2) { animation-delay: 0.3s; left: 15px; }
+        .smoke-particle:nth-child(3) { animation-delay: 0.6s; left: 30px; }
+        .train-cars {
+            display: flex;
+            align-items: flex-end;
+        }
+        .car {
+            width: 45px;
+            height: 30px;
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            margin-left: 3px;
+            border-radius: 3px 3px 0 0;
+            position: relative;
+            bottom: 12px;
+        }
+        .car::before {
+            content: '';
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            right: 5px;
+            height: 15px;
+            border: 2px dashed rgba(255,255,255,0.3);
+            border-radius: 2px;
+        }
+        .wheels {
+            position: absolute;
+            bottom: 0;
+            left: 5px;
+            display: flex;
+            gap: 35px;
+        }
+        .wheel {
+            width: 16px;
+            height: 16px;
+            background: #2c3e50;
+            border-radius: 50%;
+            border: 3px solid #1a252f;
+            animation: wheelSpin 0.5s linear infinite;
+        }
+        .train-track {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 8px;
+            background: linear-gradient(90deg, #34495e 0%, #2c3e50 50%, #34495e 100%);
+        }
+        .train-track::before,
+        .train-track::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 100%;
+            height: 2px;
+            background: repeating-linear-gradient(90deg, #7f8c8d 0px, #7f8c8d 30px, transparent 30px, transparent 50px);
+        }
+        .train-track::after {
+            top: auto;
+            bottom: 0;
+        }
+        @keyframes trainMove {
+            0% { transform: translateX(-450px); }
+            15% { transform: translateX(100px); }
+            30% { transform: translateX(100px); }
+            45% { transform: translateX(calc(50vw - 200px)); }
+            60% { transform: translateX(calc(50vw - 200px)); }
+            75% { transform: translateX(calc(100vw + 100px)); }
+            100% { transform: translateX(calc(100vw + 100px)); }
+        }
+        @keyframes smokeRise {
+            0% { transform: translateY(0) scale(1); opacity: 0.6; }
+            100% { transform: translateY(-30px) translateX(-10px) scale(2); opacity: 0; }
+        }
+        @keyframes wheelSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
     <canvas id="particle-canvas"></canvas>
     <div class="bg_heart"></div>
+    <div class="train-container">
+        <div class="train">
+            <div class="train-engine">
+                <div class="engine-body"></div>
+                <div class="engine-cabin"></div>
+                <div class="smoke">
+                    <div class="smoke-particle"></div>
+                    <div class="smoke-particle"></div>
+                    <div class="smoke-particle"></div>
+                </div>
+            </div>
+            <div class="train-cars">
+                <div class="car"></div>
+                <div class="car"></div>
+                <div class="car"></div>
+                <div class="car"></div>
+                <div class="car"></div>
+                <div class="car"></div>
+                <div class="car"></div>
+                <div class="car"></div>
+            </div>
+            <div class="wheels">
+                <div class="wheel"></div>
+                <div class="wheel"></div>
+                <div class="wheel"></div>
+                <div class="wheel"></div>
+                <div class="wheel"></div>
+                <div class="wheel"></div>
+                <div class="wheel"></div>
+                <div class="wheel"></div>
+                <div class="wheel"></div>
+                <div class="wheel"></div>
+            </div>
+        </div>
+        <div class="train-track"></div>
+    </div>
     <div class="container">
         <h1>Momda_X网站导航</h1>
         <p class="subtitle">选择您要访问的网站</p>
