@@ -84,7 +84,10 @@
 
         /* 音乐播放器样式 */
         .music-player {
-            position: relative;
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
             z-index: 30;
             display: flex;
             align-items: center;
@@ -92,8 +95,7 @@
             background: rgba(20, 28, 40, 0.75);
             backdrop-filter: blur(12px);
             border-radius: 50px;
-            padding: 10px 20px;
-            margin-bottom: 30px;
+            padding: 12px 24px;
             border: 1px solid rgba(255,255,255,0.15);
             box-shadow: 0 8px 24px rgba(0,0,0,0.2);
         }
@@ -284,20 +286,6 @@
     <div class="bg_heart"></div>
     <canvas id="train-canvas"></canvas>
     
-    <div class="music-player">
-        <button class="music-btn" id="prevBtn">⏮</button>
-        <button class="music-btn play-btn" id="playBtn">▶</button>
-        <button class="music-btn" id="nextBtn">⏭</button>
-        <div class="music-info">
-            <div class="music-title" id="musicTitle">Call Me Tonight</div>
-            <div class="music-artist" id="musicArtist">Unknown Artist</div>
-        </div>
-        <div class="progress-bar" id="progressBar">
-            <div class="progress-fill" id="progressFill"></div>
-        </div>
-        <div class="time-display" id="timeDisplay">0:00 / 0:00</div>
-    </div>
-    
     <div class="container">
         <h1>🚆 Momda_X主页</h1>
         <p class="subtitle">选择要打开的网站</p>
@@ -319,6 +307,20 @@
             </div>
         </div>
         <div class="footer">© 2026 铁路3D交互 | 鼠标拖拽旋转/右键平移/滚轮缩放</div>
+    </div>
+    
+    <div class="music-player">
+        <button class="music-btn" id="prevBtn">⏮</button>
+        <button class="music-btn play-btn" id="playBtn">▶</button>
+        <button class="music-btn" id="nextBtn">⏭</button>
+        <div class="music-info">
+            <div class="music-title" id="musicTitle">Call Me Tonight</div>
+            <div class="music-artist" id="musicArtist">Unknown Artist</div>
+        </div>
+        <div class="progress-bar" id="progressBar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="time-display" id="timeDisplay">0:00 / 0:00</div>
     </div>
 
     <script type="importmap">
