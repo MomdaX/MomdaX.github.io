@@ -237,13 +237,13 @@ class TrackBuilder {
         const offsetY = p.trainYOffset - box.min.y;
         this.trainModel.position.y = offsetY;
         this.trainModel.position.x = 0;
-        this.trainModel.position.z = this.currentZ;
+        this.trainModel.position.z = 0;
 
         this.trainGroup.add(this.trainModel);
         this.trainGroup.renderOrder = 10;
+        this.trainGroup.position.z = this.currentZ;
         this.modelLoaded = true;
 
-        // 创建车灯
         this._createHeadlights();
 
         console.log('火车模型加载完成，包围盒:', box.min, box.max, '高度:', modelHeight);
@@ -271,9 +271,10 @@ class TrackBuilder {
         this.trainModel.rotation.y = p.trainRotationY;
         this.trainModel.position.y = p.trainYOffset;
         this.trainModel.position.x = 0;
-        this.trainModel.position.z = this.currentZ;
+        this.trainModel.position.z = 0;
         this.trainGroup.add(this.trainModel);
         this.trainGroup.renderOrder = 10;
+        this.trainGroup.position.z = this.currentZ;
         this.modelLoaded = true;
 
         // 创建车灯
@@ -407,7 +408,7 @@ class TrackBuilder {
                 }
             }
 
-            this.trainModel.position.z = this.currentZ;
+            this.trainGroup.position.z = this.currentZ;
 
             // 更新车灯位置和强度
             this._updateHeadlights();
