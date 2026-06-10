@@ -27,6 +27,10 @@ class TrackBuilder {
         this.pauseStartTime = 0;
         this.pauseDuration = 5000;
 
+        // 车灯
+        this.headlights = [];
+        this.headlightOn = true;
+
         this.params = {
             trackLength: 300,          // 轨道总长度
             gauge: 2.0,               // 轨距（两轨间距）
@@ -47,7 +51,13 @@ class TrackBuilder {
             boundsMinZ: -100,         // Z轴运动边界最小值
             boundsMaxZ: 100,          // Z轴运动边界最大值
             cameraPos: { x: 20, y: 10, z: 50 },       // 相机位置
-            cameraTarget: { x: 0, y: 0.3, z: 0 }      // 相机瞄准点
+            cameraTarget: { x: 0, y: 0.3, z: 0 },      // 相机瞄准点
+            // 车灯参数
+            headlightColor: 0xffffff,     // 车灯颜色（纯白色）
+            headlightIntensity: 8.0,      // 车灯强度
+            headlightDistance: 100,       // 车灯照射距离
+            headlightAngle: Math.PI / 4,  // 车灯角度
+            headlightPenumbra: 0.2        // 车灯半影
         };
     }
 
@@ -218,20 +228,24 @@ class TrackBuilder {
     _setupTrainModel(object) {
         this.trainModel = object;
         const p = this.params;
-        
+
         this.trainModel.scale.set(p.trainScale, p.trainScale, p.trainScale);
         this.trainModel.rotation.y = p.trainRotationY;
-        
+
         const box = new THREE.Box3().setFromObject(this.trainModel);
         const modelHeight = box.max.y - box.min.y;
         const offsetY = p.trainYOffset - box.min.y;
         this.trainModel.position.y = offsetY;
         this.trainModel.position.x = 0;
         this.trainModel.position.z = this.currentZ;
-        
+
         this.trainGroup.add(this.trainModel);
         this.trainGroup.renderOrder = 10;
         this.modelLoaded = true;
+
+        // 创建车灯
+        this._createHeadlights();
+
         console.log('火车模型加载完成，包围盒:', box.min, box.max, '高度:', modelHeight);
     }
 
@@ -261,7 +275,89 @@ class TrackBuilder {
         this.trainGroup.add(this.trainModel);
         this.trainGroup.renderOrder = 10;
         this.modelLoaded = true;
+
+        // 创建车灯
+        this._createHeadlights();
+
         console.log('使用简易示意火车模型');
+    }
+
+    _createHeadlights() {
+        const p = this.params;
+
+        for (let i = 0; i < 2; i++) {
+            const headlight = new THREE.SpotLight(p.headlightColor, this.headlightOn ? p.headlightIntensity : 0);
+            headlight.position.set(0, 0, 0);
+            headlight.target.position.set(0, -0.5, 20);
+            headlight.distance = p.headlightDistance;
+            headlight.angle = p.headlightAngle;
+            headlight.penumbra = p.headlightPenumbra;
+            headlight.decay = 1.5;
+            headlight.castShadow = false;
+
+            const bulbGeo = new THREE.SphereGeometry(0.08, 8, 8);
+            const bulbMat = new THREE.MeshBasicMaterial({ 
+                color: p.headlightColor,
+                transparent: true,
+                opacity: this.headlightOn ? 1 : 0
+            });
+            const bulb = new THREE.Mesh(bulbGeo, bulbMat);
+            bulb.position.copy(headlight.position);
+
+            const glowGeo = new THREE.SphereGeometry(0.15, 8, 8);
+            const glowMat = new THREE.MeshBasicMaterial({
+                color: p.headlightColor,
+                transparent: true,
+                opacity: this.headlightOn ? 0.5 : 0
+            });
+            const glow = new THREE.Mesh(glowGeo, glowMat);
+            glow.position.copy(headlight.position);
+
+            this.trainGroup.add(headlight);
+            this.trainGroup.add(headlight.target);
+            this.trainGroup.add(bulb);
+            this.trainGroup.add(glow);
+
+            this.headlights.push({
+                light: headlight,
+                bulb: bulb,
+                glow: glow,
+                xOffset: (i === 0 ? -0.5 : 0.5)
+            });
+        }
+
+        console.log('车灯创建完成');
+    }
+
+    _updateHeadlights() {
+        if (this.headlights.length === 0) return;
+
+        const p = this.params;
+        const targetIntensity = this.headlightOn ? p.headlightIntensity : 0;
+
+        this.headlights.forEach((hl) => {
+            const lightX = hl.xOffset * p.trainScale * 0.35;
+            const lightY = 0.22 * p.trainScale;
+            const lightZ = 1.7 * p.trainScale;
+
+            hl.light.position.set(lightX, lightY, lightZ);
+
+            const lookDir = new THREE.Vector3(0, -0.15, 1);
+            hl.light.target.position.set(
+                lightX + lookDir.x * p.headlightDistance,
+                lightY + lookDir.y * p.headlightDistance,
+                lightZ + lookDir.z * p.headlightDistance
+            );
+            hl.light.target.updateMatrixWorld();
+
+            hl.light.intensity = targetIntensity;
+
+            hl.bulb.material.opacity = this.headlightOn ? 1 : 0;
+            hl.bulb.position.copy(hl.light.position);
+
+            hl.glow.material.opacity = this.headlightOn ? 0.5 : 0;
+            hl.glow.position.copy(hl.light.position);
+        });
     }
 
     _animate() {
@@ -286,7 +382,8 @@ class TrackBuilder {
             if (this.animationState === 'entering') {
                 const step = this.params.trainSpeed * delta * 60;
                 this.currentZ += step;
-                
+                this.headlightOn = true;
+
                 if (this.currentZ >= trackCenter) {
                     this.currentZ = trackCenter;
                     this.animationState = 'paused';
@@ -301,15 +398,24 @@ class TrackBuilder {
             } else if (this.animationState === 'exiting') {
                 const step = this.params.trainSpeed * delta * 60;
                 this.currentZ += step;
-                
+                this.headlightOn = true;
+
                 if (this.currentZ >= this.params.boundsMaxZ + 10) {
                     this.currentZ = this.params.boundsMinZ - 10;
                     this.animationState = 'entering';
                     console.log('火车开出轨道，重新进入');
                 }
             }
-            
+
             this.trainModel.position.z = this.currentZ;
+
+            // 更新车灯位置和强度
+            this._updateHeadlights();
+        }
+
+        // 即使火车模型未加载，也更新车灯（如果已创建）
+        if (!this.modelLoaded && this.headlights.length > 0) {
+            this._updateHeadlights();
         }
 
         this.controls.update();
