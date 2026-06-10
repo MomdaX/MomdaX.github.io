@@ -77,10 +77,64 @@
             z-index: 1;
             pointer-events: none;
         }
+        .bg_heart {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 2;
+            pointer-events: none;
+        }
+        .heart {
+            position: absolute;
+            top: -50%;
+            transform: rotate(-45deg);
+        }
+        .heart:before {
+            position: absolute;
+            top: -50%;
+            left: 0;
+            display: block;
+            content: "";
+            width: 100%;
+            height: 100%;
+            background: inherit;
+            border-radius: 100%;
+        }
+        .heart:after {
+            position: absolute;
+            top: 0;
+            right: -50%;
+            display: block;
+            content: "";
+            width: 100%;
+            height: 100%;
+            background: inherit;
+            border-radius: 100%;
+        }
+        @keyframes love {
+            0% { top: 110%; }
+            100% { top: -50%; }
+        }
+        @-webkit-keyframes love {
+            0% { top: 110%; }
+            100% { top: -50%; }
+        }
+        @-moz-keyframes love {
+            0% { top: 110%; }
+            100% { top: -50%; }
+        }
+        @-ms-keyframes love {
+            0% { top: 110%; }
+            100% { top: -50%; }
+        }
     </style>
 </head>
 <body>
     <canvas id="particle-canvas"></canvas>
+    <div class="bg_heart"></div>
     <div class="container">
         <h1>Momda_X网站导航</h1>
         <p class="subtitle">选择您要访问的网站</p>
@@ -93,6 +147,7 @@
         </div>
     </div>
 
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         function startParticles() {
             var the_canvas = document.getElementById('particle-canvas');
@@ -198,6 +253,26 @@
         }
 
         window.addEventListener('DOMContentLoaded', startParticles);
+        
+        var love = setInterval(function(){
+            var r_num = Math.floor(Math.random() * 40) + 1;
+            var r_size = Math.floor(Math.random() * 65) + 10;
+            var r_left = Math.floor(Math.random() * 100) + 1;
+            var r_bg = Math.floor(Math.random() * 25) + 100;
+            var r_time = Math.floor(Math.random() * 5) + 5;
+            
+            $('.bg_heart').append("<div class='heart' style='width:"+r_size+"px;height:"+r_size+"px;left:"+r_left+"%;background:rgba(255,"+(r_bg-25)+","+r_bg+",1);animation:love "+r_time+"s ease-in-out forwards;-webkit-animation:love "+r_time+"s ease-in-out forwards;-moz-animation:love "+r_time+"s ease-in-out forwards;-ms-animation:love "+r_time+"s ease-in-out forwards'></div>");
+            
+            $('.bg_heart').append("<div class='heart' style='width:"+(r_size-10)+"px;height:"+(r_size-10)+"px;left:"+(r_left+r_num)+"%;background:rgba(255,"+(r_bg-25)+","+(r_bg+25)+",1);animation:love "+(r_time+5)+"s ease-in-out forwards;-webkit-animation:love "+(r_time+5)+"s ease-in-out forwards;-moz-animation:love "+(r_time+5)+"s ease-in-out forwards;-ms-animation:love "+(r_time+5)+"s ease-in-out forwards'></div>");
+            
+            $('.heart').each(function(){
+                var top = parseFloat($(this).css("top"));
+                var width = parseFloat($(this).css("width"));
+                if(top <= -100 || width >= 150){
+                    $(this).remove();
+                }
+            });
+        }, 500);
     </script>
 </body>
 </html>
