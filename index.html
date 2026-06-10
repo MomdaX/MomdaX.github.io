@@ -161,6 +161,12 @@
             min-width: 80px;
             text-align: right;
         }
+        .visualizer {
+            width: 200px;
+            height: 40px;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.3);
+        }
 
         /* UI 导航面板 (位于上半部分) */
         .container {
@@ -297,7 +303,7 @@
             <h2>📌 常用导航</h2>
             <div class="nav-grid">
                 <div class="nav-item"><a href="https://github.com/MomdaX" target="_blank">MomdaX主页</a></div>
-                <div class="nav-item"><a href="https://www.npmjs.com/~momdax" target="_blank">Cnpmjs合集</a></div>
+                <div class="nav-item"><a href="https://okazaki112.github.io/Canvas-Demo/" target="_blank">Canvas合集</a></div>
                 <div class="nav-item"><a href="https://www.lddgo.net/" target="_blank">工具软件</a></div>
                 <div class="nav-item"><a href="https://www.gaobug.com/bigscreen/#/index" target="_blank">可视化平台</a></div>
                 <div class="nav-item"><a href="http://47.96.130.245:8080/train/index.html#/" target="_blank">车站可视化</a></div>
@@ -321,6 +327,7 @@
             <div class="progress-fill" id="progressFill"></div>
         </div>
         <div class="time-display" id="timeDisplay">0:00 / 0:00</div>
+        <canvas id="visualizer" class="visualizer"></canvas>
     </div>
 
     <script type="importmap">
@@ -449,6 +456,11 @@
             let currentTrack = 0;
             let audio = null;
             let isPlaying = false;
+            let audioContext = null;
+            let analyser = null;
+            let sourceNode = null;
+            let animationId = null;
+            
             const playBtn = document.getElementById('playBtn');
             const prevBtn = document.getElementById('prevBtn');
             const nextBtn = document.getElementById('nextBtn');
@@ -457,31 +469,104 @@
             const timeDisplay = document.getElementById('timeDisplay');
             const musicTitle = document.getElementById('musicTitle');
             const musicArtist = document.getElementById('musicArtist');
+            const visualizerCanvas = document.getElementById('visualizer');
+            const visualizerCtx = visualizerCanvas ? visualizerCanvas.getContext('2d') : null;
             
-            function initAudio(autoplay = false) {
-                if (audio) {
-                    audio.pause();
-                    audio.removeEventListener('timeupdate', updateProgress);
-                    audio.removeEventListener('loadedmetadata', updateDuration);
-                    audio.removeEventListener('ended', onTrackEnded);
-                    audio.removeEventListener('error', handleAudioError);
-                    audio = null;
+            function initAudioContext() {
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    analyser = audioContext.createAnalyser();
+                    analyser.fftSize = 64;
+                    analyser.smoothingTimeConstant = 0.8;
+                }
+            }
+            
+            function connectAudioSource() {
+                if (!audio || !audioContext || !analyser) return;
+                
+                // 检查是否已经连接过这个音频元素
+                if (sourceNode && sourceNode.mediaElement === audio) {
+                    return; // 已经连接，不需要重新连接
                 }
                 
-                const track = audioFiles[currentTrack];
-                audio = new Audio(track.path);
-                audio.loop = false;
+                // 断开旧的连接
+                if (sourceNode) {
+                    try {
+                        sourceNode.disconnect();
+                    } catch (e) {
+                        console.warn('Disconnect error:', e);
+                    }
+                    sourceNode = null;
+                }
                 
-                musicTitle.textContent = track.title;
-                musicArtist.textContent = track.artist;
+                // 创建新的连接
+                try {
+                    sourceNode = audioContext.createMediaElementSource(audio);
+                    sourceNode.connect(analyser);
+                    analyser.connect(audioContext.destination);
+                } catch (e) {
+                    console.error('createMediaElementSource error:', e);
+                }
+            }
+            
+            function drawVisualizer() {
+                if (!visualizerCtx || !analyser || !isPlaying) {
+                    if (visualizerCtx && visualizerCanvas) {
+                        visualizerCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
+                        drawIdleBars();
+                    }
+                    return;
+                }
                 
-                audio.addEventListener('timeupdate', updateProgress);
-                audio.addEventListener('loadedmetadata', updateDuration);
-                audio.addEventListener('ended', onTrackEnded);
-                audio.addEventListener('error', handleAudioError);
+                const bufferLength = analyser.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+                analyser.getByteFrequencyData(dataArray);
                 
-                if (autoplay) {
-                    audio.play().catch(e => console.error('Play error:', e));
+                const canvasWidth = visualizerCanvas.width;
+                const canvasHeight = visualizerCanvas.height;
+                
+                visualizerCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+                
+                const barCount = 36;
+                const barWidth = canvasWidth / barCount - 1;
+                const barSpacing = 1;
+                
+                for (let i = 0; i < barCount; i++) {
+                    const dataIndex = Math.floor(i * bufferLength / barCount);
+                    const value = dataArray[dataIndex];
+                    const barHeight = (value / 255) * canvasHeight * 0.9;
+                    
+                    const x = i * (barWidth + barSpacing);
+                    const y = canvasHeight - barHeight;
+                    
+                    const gradient = visualizerCtx.createLinearGradient(x, canvasHeight, x, y);
+                    gradient.addColorStop(0, '#667eea');
+                    gradient.addColorStop(1, '#764ba2');
+                    
+                    visualizerCtx.fillStyle = gradient;
+                    visualizerCtx.fillRect(x, y, barWidth, barHeight);
+                }
+                
+                animationId = requestAnimationFrame(drawVisualizer);
+            }
+            
+            function drawIdleBars() {
+                if (!visualizerCtx || !visualizerCanvas) return;
+                
+                const canvasWidth = visualizerCanvas.width;
+                const canvasHeight = visualizerCanvas.height;
+                
+                const barCount = 36;
+                const barWidth = canvasWidth / barCount - 1;
+                const barSpacing = 1;
+                const idleHeight = 4;
+                
+                for (let i = 0; i < barCount; i++) {
+                    const x = i * (barWidth + barSpacing);
+                    const y = canvasHeight - idleHeight;
+                    
+                    visualizerCtx.fillStyle = 'rgba(102, 126, 234, 0.3)';
+                    visualizerCtx.fillRect(x, y, barWidth, idleHeight);
                 }
             }
             
@@ -523,40 +608,84 @@
             }
             
             function togglePlay() {
+                initAudioContext();
+                
+                // 确保 AudioContext 处于运行状态
+                if (audioContext && audioContext.state === 'suspended') {
+                    audioContext.resume().then(() => {
+                        console.log('AudioContext resumed');
+                    });
+                }
+                
                 if (!audio) {
-                    initAudio(true);
-                    isPlaying = true;
-                    playBtn.textContent = '⏸';
-                    return;
+                    const track = audioFiles[currentTrack];
+                    audio = new Audio(track.path);
+                    audio.loop = false;
+                    
+                    musicTitle.textContent = track.title;
+                    musicArtist.textContent = track.artist;
+                    
+                    audio.addEventListener('timeupdate', updateProgress);
+                    audio.addEventListener('loadedmetadata', updateDuration);
+                    audio.addEventListener('ended', onTrackEnded);
+                    audio.addEventListener('error', handleAudioError);
+                    
+                    // 连接音频源（只在第一次创建音频时连接）
+                    if (!sourceNode) {
+                        connectAudioSource();
+                    }
                 }
                 
                 if (audio.paused) {
-                    audio.play().catch(e => {
+                    audio.play().then(() => {
+                        isPlaying = true;
+                        playBtn.textContent = '⏸';
+                        drawVisualizer();
+                    }).catch(e => {
                         console.error('Play error:', e);
                         playBtn.textContent = '▶';
+                        isPlaying = false;
                     });
-                    isPlaying = true;
-                    playBtn.textContent = '⏸';
                 } else {
                     audio.pause();
                     isPlaying = false;
                     playBtn.textContent = '▶';
+                    if (animationId) {
+                        cancelAnimationFrame(animationId);
+                    }
+                    drawIdleBars();
                 }
             }
             
             function prevTrack() {
                 currentTrack = (currentTrack - 1 + audioFiles.length) % audioFiles.length;
-                initAudio(isPlaying);
-                if (isPlaying) {
-                    playBtn.textContent = '⏸';
+                const track = audioFiles[currentTrack];
+                
+                if (audio) {
+                    audio.src = track.path;
+                    musicTitle.textContent = track.title;
+                    musicArtist.textContent = track.artist;
+                    
+                    if (isPlaying) {
+                        audio.play().catch(e => console.error('Play error:', e));
+                        drawVisualizer();
+                    }
                 }
             }
             
             function nextTrack() {
                 currentTrack = (currentTrack + 1) % audioFiles.length;
-                initAudio(isPlaying);
-                if (isPlaying) {
-                    playBtn.textContent = '⏸';
+                const track = audioFiles[currentTrack];
+                
+                if (audio) {
+                    audio.src = track.path;
+                    musicTitle.textContent = track.title;
+                    musicArtist.textContent = track.artist;
+                    
+                    if (isPlaying) {
+                        audio.play().catch(e => console.error('Play error:', e));
+                        drawVisualizer();
+                    }
                 }
             }
             
@@ -572,9 +701,16 @@
             nextBtn.addEventListener('click', nextTrack);
             progressBar.addEventListener('click', seekTo);
             
+            // 初始化可视化画布尺寸
+            if (visualizerCanvas) {
+                visualizerCanvas.width = 200;
+                visualizerCanvas.height = 40;
+                drawIdleBars();
+            }
+            
             window.musicPlayer = {
                 play: togglePlay,
-                pause: () => { if (audio && !audio.paused) { audio.pause(); isPlaying = false; playBtn.textContent = '▶'; } },
+                pause: () => { if (audio && !audio.paused) { audio.pause(); isPlaying = false; playBtn.textContent = '▶'; if (animationId) cancelAnimationFrame(animationId); drawIdleBars(); } },
                 next: nextTrack,
                 prev: prevTrack,
                 currentTrack: () => currentTrack,
