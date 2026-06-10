@@ -1,0 +1,28 @@
+.load_svg
+{
+}
+
+.unload_svg
+{
+}
+
+
+.axis path,
+.axis line {
+    fill: none;
+    stroke: black;
+    shape-rendering: crispEdges;
+}
+
+.axis text {
+    font-family: 'Microsoft YaHei';
+    font-size: 12px;
+}
+
+.dock1rect{
+    fill: #DD4F43;
+}
+
+.dock2rect{
+    fill: #1F77B4;
+}

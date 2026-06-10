@@ -1,0 +1,322 @@
+.col-lg-6
+{
+    padding-left: 10px !important;
+    /*border: 1px solid red;*/
+}
+
+.flew_input_jmtj_div .col-lg-6
+{
+    height: 185px;
+    width: 148px;
+    overflow-x: hidden;
+}
+.flew_input_div{
+    width: 640px;
+    height: 237px;
+    border: 1px solid gray;
+    /*border:1px solid #DDDDDF;*/
+    margin-bottom:5px;
+    background:#fbfbfb;
+    cursor:pointer;
+    padding:5px;
+}
+
+.flew_input_jmtj_div
+{
+    float: left;
+    width  : 157px;
+    height : 225px;
+    /*display: inline-block;*/
+    border: 1px solid lightgrey;
+    background:#fbfbfb;
+    border-right: 0px;
+}
+
+.flew_input_cate_div
+{
+    float: left;
+    width  : 100px;
+    height : 225px;
+   /* display: inline-block;*/
+    /*border: 1px solid #2ECC40;*/
+    border: 1px solid lightgrey;
+    background:#fbfbfb;
+    border-right: 0px;
+}
+
+.flew_input_cate_div .col-lg-6{
+    height: 157px;
+    width: 98px;
+    overflow-x: hidden;
+    font-size: 12px;
+}
+.flew_input_farea_div
+{
+    float: left;
+    width  : 101px;
+    height : 225px;
+    border: 1px solid lightgrey;
+    background:#fbfbfb;
+    border-right:0px;
+}
+
+.flew_input_farea_div .col-lg-6
+{
+    height:157px;
+    width: 100px;
+    overflow-x: hidden;
+}
+
+.flew_input_darea_div
+{
+    float: left;
+    width  : 101px;
+    height : 225px;
+    border: 1px solid lightgrey;
+    background:#fbfbfb;
+    border-right: 0px;
+}
+.flew_input_darea_div .col-lg-6
+{
+    height:157px;
+    width: 100px;
+    /*overflow-x: auto;*/
+    overflow-x: hidden;
+}
+.flew_input_calc_div
+{
+    float: left;
+    width  : 124px;
+    height : 225px;
+    padding-top: 28px;
+    border: 1px solid lightgrey;
+}
+
+.flew_input_jmtj_div_title
+{
+    font-size:12px;
+    font-weight: 600;
+    width  : 124px;
+    margin-top: 5px;
+    margin-left: 5px;
+    margin-bottom: 6px;
+    padding-left: 13px;
+}
+
+.input-group-addon
+{
+    font-size:12px;
+    text-align: left;
+}
+
+.input-group-addon input
+{
+    margin-right: 5px;
+    cursor: pointer;
+    float: left;
+}
+
+.flew_input_jmtj_div_list
+{
+    margin-top: -1px;
+    width: 136px;
+    height: 26px;
+}
+
+.flew_input_pl_div_list
+{
+    margin-top: -1px;
+    width: 75px;
+    height: 26px;
+}
+.all_select_pl_header
+{
+    margin-left: 11px;
+    width: 90px;
+}
+.flew_input_pl_headerdiv_list
+{
+    margin-bottom: 2px;
+    margin-top: -1px;
+    width: 90px;
+    height: 26px;
+}
+
+.flew_input_flj_div_list
+{
+    margin-top: -1px;
+    width: 75px;
+    height: 26px;
+}
+flew_input_flj_headerdiv_list
+{
+    margin-bottom: 3px;
+    margin-top: -1px;
+    width: 70px;
+    height: 26px;
+}
+flew_input_dlj_headerdiv_list
+{
+    margin-bottom: 3px;
+    margin-top: -1px;
+    width: 70px;
+    height: 26px;
+}
+
+.all_select_flj_header
+{
+    margin-left: 10px;
+    width: 90px;
+}
+
+.flew_input_dlj_div_list
+{
+    margin-top: -1px;
+    width: 75px;
+    height: 26px;
+}
+flew_input_dlj_headerdiv_list
+{
+    margin-bottom: 2px;
+    margin-top: -1px;
+    width: 70px;
+    height: 26px;
+}
+
+.all_select_dlj_header
+{
+    margin-left: 10px;
+    width: 90px;
+}
+
+.flew_cal_div_btn
+{
+    padding-left: 52px;
+}
+#flew_calc_input
+{
+    margin-right: 7px;
+}
+
+.flew_input_calc_div div
+{
+    padding-left: 10px;
+    margin-bottom: 3px;
+}
+.flew_input_calc_div input
+{
+    width: 50px;
+}
+.flew_input_calc_div button
+{
+    width: 103px;
+    margin-bottom: 1px;
+}
+.flew_input_div_hide
+{
+    transition: 0.5ms;
+    margin-left: 642px;
+}
+.flew_input_div_extend
+{
+    transition: 0.5ms;
+    margin-left: 0px;
+}
+.flew_header_tip{
+    height: 60px;
+    width: 22px;
+    border: 1px solid lightgrey;
+    margin-top: 80px;
+    margin-left: 0px;
+    color: white;
+    float: left;
+    border-top-right-radius: 15px;
+    border-bottom-right-radius: 15px;
+    background: #fbfbfb;
+    color: gray;
+    padding-top: 10px;
+    padding-left:3px;
+
+}
+.flew_header_tip_extend
+{
+    margin-left: -635px;
+    border-top-right-radius: 0px;
+    border-bottom-right-radius: 0px;
+    border-top-left-radius: 15px;
+    border-bottom-left-radius: 15px;
+    color: blue;
+}
+
+
+.flew0_circle
+{
+    cursor: pointer;
+    fill : #FF9DFF;
+}
+.flew1_circle
+{
+    cursor: pointer;
+    fill : #FE4B4B;
+}
+.flew2_circle
+{
+    cursor: pointer;
+    fill : #0080FF;
+}
+.flew3_circle
+{
+    cursor: pointer;
+    fill : #00FF00;
+}
+.flew4_circle
+{
+    cursor: pointer;
+    fill : #ffffff;
+}
+
+.flew0_line
+{
+    cursor: pointer;
+    stroke-linecap: round;
+    stroke : #FF9DFF;
+}
+.flew1_line
+{
+    cursor: pointer;
+    stroke-linecap: round;
+    stroke : #FE4B4B;
+}
+.flew2_line
+{
+    cursor: pointer;
+    stroke-linecap: round;
+    stroke : #0080FF;
+}
+.flew3_line
+{
+    cursor: pointer;
+    stroke-linecap: round;
+    stroke : #00FF00;
+}
+.flew4_line
+{
+    cursor: pointer;
+    stroke-linecap: round;
+    stroke : #ffffff;
+}
+
+.select_jy_circle
+{
+    /*fill : #00FF00;*/
+}
+
+.select_jy_line
+{
+    /*stroke : #00FF00;*/
+}
+
+.select_no_jy_circle
+{
+    /*fill : #9876AA;*/
+}

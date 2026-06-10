@@ -1,0 +1,36 @@
+
+/*发站在线里*/
+.scope_f_line{
+    stroke : #FE4B4B;
+}
+
+/*发站在圆里*/
+.scope_f_circle{
+    fill : #FE4B4B;
+}
+
+/*到站在线里*/
+.scope_d_line{
+    stroke : #3462FB;
+}
+
+/*到站在圆里*/
+.scope_d_circle{
+    fill : #3462FB;
+}
+
+/*未全选状态圆*/
+.scope_d_state_line{
+    stroke : #22CEFF;
+}
+
+/*未全选状态线*/
+.scope_f_state_line{
+    stroke : #FE724B;
+}
+
+/*经由站*/
+.scope_jyz{
+    fill : #22CE65;
+}
+

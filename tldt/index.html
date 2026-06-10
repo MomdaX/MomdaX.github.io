@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中图铁路地图 - 技术揭秘</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-subway"></i>
+                <span>铁路地图</span>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#home" class="active">首页</a></li>
+                <li><a href="#map-demo">地图演示</a></li>
+                <li><a href="#features">核心功能</a></li>
+                <li><a href="#architecture">技术架构</a></li>
+                <li><a href="#algorithm">算法原理</a></li>
+                <li><a href="#highlights">技术亮点</a></li>
+                <li><a href="#integration">系统集成</a></li>
+            </ul>
+            <div class="nav-toggle">
+                <i class="fas fa-bars"></i>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero">
+        <div class="hero-bg">
+            <canvas id="particleCanvas"></canvas>
+            <div class="grid-overlay"></div>
+            <svg class="railway-map" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice">
+                <defs>
+                    <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style="stop-color:#38b2ac;stop-opacity:0.3" />
+                        <stop offset="50%" style="stop-color:#38b2ac;stop-opacity:0.8" />
+                        <stop offset="100%" style="stop-color:#38b2ac;stop-opacity:0.3" />
+                    </linearGradient>
+                    <filter id="glow">
+                        <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                        <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
+                </defs>
+                
+                <!-- 铁路线路 -->
+                <g class="railway-lines">
+                    <path class="rail-line" d="M100,300 Q200,250 300,300 T500,280 T700,320 T900,290 T1100,310" fill="none" stroke="url(#lineGradient)" stroke-width="2" filter="url(#glow)"/>
+                    <path class="rail-line" d="M150,200 Q250,180 350,220 T550,200 T750,230 T950,210" fill="none" stroke="url(#lineGradient)" stroke-width="1.5" filter="url(#glow)"/>
+                    <path class="rail-line" d="M200,400 Q350,380 500,420 T800,400 T1000,430" fill="none" stroke="url(#lineGradient)" stroke-width="1.5" filter="url(#glow)"/>
+                    <path class="rail-line" d="M300,150 Q450,120 600,160 T900,140" fill="none" stroke="url(#lineGradient)" stroke-width="1" filter="url(#glow)"/>
+                    <path class="rail-line" d="M400,450 Q550,430 700,460 T1000,440" fill="none" stroke="url(#lineGradient)" stroke-width="1" filter="url(#glow)"/>
+                    <path class="rail-line" d="M500,100 Q700,80 900,120" fill="none" stroke="url(#lineGradient)" stroke-width="1" filter="url(#glow)"/>
+                </g>
+                
+                <!-- 铁路节点 -->
+                <g class="railway-nodes">
+                    <circle class="node" cx="100" cy="300" r="4" fill="#38b2ac" filter="url(#glow)">
+                        <animate attributeName="opacity" values="0.4;1;0.4" dur="2s" repeatCount="indefinite"/>
+                        <animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle class="node" cx="300" cy="300" r="5" fill="#f6ad55" filter="url(#glow)">
+                        <animate attributeName="opacity" values="0.4;1;0.4" dur="2.5s" repeatCount="indefinite"/>
+                        <animate attributeName="r" values="5;7;5" dur="2.5s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle class="node" cx="500" cy="280" r="4" fill="#38b2ac" filter="url(#glow)">
+                        <animate attributeName="opacity" values="0.4;1;0.4" dur="1.8s" repeatCount="indefinite"/>
+                        <animate attributeName="r" values="4;6;4" dur="1.8s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle class="node" cx="700" cy="320" r="6" fill="#3182ce" filter="url(#glow)">
+                        <animate attributeName="opacity" values="0.4;1;0.4" dur="3s" repeatCount="indefinite"/>
+                        <animate attributeName="r" values="6;8;6" dur="3s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle class="node" cx="900" cy="290" r="4" fill="#38b2ac" filter="url(#glow)">
+                        <animate attributeName="opacity" values="0.4;1;0.4" dur="2.2s" repeatCount="indefinite"/>
+                        <animate attributeName="r" values="4;6;4" dur="2.2s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle class="node" cx="1100" cy="310" r="5" fill="#f6ad55" filter="url(#glow)">
+                        <animate attributeName="opacity" values="0.4;1;0.4" dur="2.8s" repeatCount="indefinite"/>
+                        <animate attributeName="r" values="5;7;5" dur="2.8s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle class="node" cx="150" cy="200" r="3" fill="#38b2ac" filter="url(#glow)">
+                        <animate attributeName="opacity" values="0.4;1;0.4" dur="2s" repeatCount="indefinite"/>
+                        <animate attributeName="r" values="3;5;3" dur="2s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle class="node" cx="350" cy="220" r="4" fill="#38b2ac" filter="url(#glow)">
+                        <animate attributeName="opacity" values="0.4;1;0.4" dur="2.3s" repeatCount="indefinite"/>
+                        <animate attributeName="r" values="4;6;4" dur="2.3s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle class="node" cx="550" cy="200" r="3" fill="#38b2ac" filter="url(#glow)">
+                        <animate attributeName="opacity" values="0.4;1;0.4" dur="1.9s" repeatCount="indefinite"/>
+                        <animate attributeName="r" values="3;5;3" dur="1.9s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle class="node" cx="750" cy="230" r="4" fill="#3182ce" filter="url(#glow)">
+                        <animate attributeName="opacity" values="0.4;1;0.4" dur="2.6s" repeatCount="indefinite"/>
+                        <animate attributeName="r" values="4;6;4" dur="2.6s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle class="node" cx="200" cy="400" r="3" fill="#38b2ac" filter="url(#glow)">
+                        <animate attributeName="opacity" values="0.4;1;0.4" dur="2.1s" repeatCount="indefinite"/>
+                        <animate attributeName="r" values="3;5;3" dur="2.1s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle class="node" cx="500" cy="420" r="5" fill="#f6ad55" filter="url(#glow)">
+                        <animate attributeName="opacity" values="0.4;1;0.4" dur="2.7s" repeatCount="indefinite"/>
+                        <animate attributeName="r" values="5;7;5" dur="2.7s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle class="node" cx="800" cy="400" r="4" fill="#38b2ac" filter="url(#glow)">
+                        <animate attributeName="opacity" values="0.4;1;0.4" dur="2.4s" repeatCount="indefinite"/>
+                        <animate attributeName="r" values="4;6;4" dur="2.4s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle class="node" cx="600" cy="160" r="6" fill="#3182ce" filter="url(#glow)">
+                        <animate attributeName="opacity" values="0.4;1;0.4" dur="3.2s" repeatCount="indefinite"/>
+                        <animate attributeName="r" values="6;8;6" dur="3.2s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle class="node" cx="700" cy="460" r="3" fill="#38b2ac" filter="url(#glow)">
+                        <animate attributeName="opacity" values="0.4;1;0.4" dur="2s" repeatCount="indefinite"/>
+                        <animate attributeName="r" values="3;5;3" dur="2s" repeatCount="indefinite"/>
+                    </circle>
+                </g>
+                
+                <!-- 流动粒子 -->
+                <g class="flow-particles">
+                    <circle class="flow-particle" r="3" fill="#f6ad55" filter="url(#glow)">
+                        <animateMotion dur="8s" repeatCount="indefinite" path="M100,300 Q200,250 300,300 T500,280 T700,320 T900,290 T1100,310"/>
+                        <animate attributeName="opacity" values="0;1;0" dur="8s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle class="flow-particle" r="2" fill="#38b2ac" filter="url(#glow)">
+                        <animateMotion dur="6s" repeatCount="indefinite" path="M150,200 Q250,180 350,220 T550,200 T750,230"/>
+                        <animate attributeName="opacity" values="0;1;0" dur="6s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle class="flow-particle" r="2" fill="#3182ce" filter="url(#glow)">
+                        <animateMotion dur="10s" repeatCount="indefinite" path="M500,100 Q700,80 900,120"/>
+                        <animate attributeName="opacity" values="0;1;0" dur="10s" repeatCount="indefinite"/>
+                    </circle>
+                </g>
+            </svg>
+        </div>
+        <div class="hero-content">
+            <div class="hero-badge">
+                <i class="fas fa-code-branch"></i>
+                技术揭秘
+            </div>
+            <h1 class="hero-title">
+                <span class="title-line">铁路地图</span>
+                <span class="title-highlight">最短径路</span>
+                <span class="title-line">智能生成系统</span>
+            </h1>
+            <p class="hero-description">
+                基于<span class="highlight-text">A*算法</span>与<span class="highlight-text">Dijkstra算法</span>的
+                智能路径规划系统，让铁路网络可视化与最短径路查询变得简单高效
+            </p>
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <div class="stat-number" data-target="1760">0</div>
+                    <div class="stat-label">铁路节点</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" data-target="2800">0</div>
+                    <div class="stat-label">铁路线路</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" data-target="19">0</div>
+                    <div class="stat-label">路局覆盖</div>
+                </div>
+            </div>
+            <div class="hero-actions">
+                <a href="#map-demo" class="btn btn-primary">
+                    <i class="fas fa-map-marked-alt"></i>
+                    查看地图
+                </a>
+                <a href="#algorithm" class="btn btn-outline">
+                    <i class="fas fa-brain"></i>
+                    了解算法
+                </a>
+            </div>
+        </div>
+        <div class="scroll-indicator">
+            <div class="mouse">
+                <div class="wheel"></div>
+            </div>
+            <span>向下滚动</span>
+        </div>
+    </section>
+
+    <!-- Map Demo Section -->
+    <section id="map-demo" class="section map-demo">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-tag">
+                    <i class="fas fa-map-marked-alt"></i>
+                    地图演示
+                </div>
+                <h2 class="section-title">铁路网络可视化系统</h2>
+                <p class="section-subtitle">
+                    交互式地图，支持搜索定位、最短径路规划、动态路径渲染
+                </p>
+            </div>
+            
+            <!-- 自定义表格 -->
+            <div class="custom-table-container">
+                <div class="custom-table-header">
+                    <i class="fas fa-table"></i>
+                    <h3>车站编组内容</h3>
+                </div>
+                <div class="custom-table-wrapper">
+                    <table class="custom-table" id="custom-station-table">
+                        <thead>
+                            <tr>
+                                <th class="row-index">#</th>
+                                <th>股道</th>
+                                <th>顺</th>
+                                <th>车种</th>
+                                <th>车号</th>
+                                <th>自重</th>
+                                <th>换长</th>
+                                <th>载重</th>
+                                <th>到站</th>
+                                <th>方向</th>
+                                <th>品名</th>
+                                <th>发站</th>
+                                <th>发货人</th>
+                                <th>收货人</th>
+                                <th>挂运车次</th>
+                                <th>备注</th>
+                            </tr>
+                        </thead>
+                        <tbody id="custom-table-body">
+                            <!-- 数据将通过JS动态生成 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="station-buttons" id="station-buttons">
+                <!-- 车站快捷按钮将通过JS动态生成 -->
+            </div>
+            
+            <div class="map-container">
+                <iframe id="map-iframe" src="中图铁路地图.html" class="map-iframe" title="铁路地图演示" 
+                    sandbox="allow-scripts allow-same-origin allow-forms"
+                    loading="lazy"
+                    onload="console.log('地图iframe已加载')"
+                    onerror="console.error('地图加载失败，请检查文件')">
+                </iframe>
+                <div id="map-fallback" class="map-fallback" style="display: none; padding: 40px; text-align: center;">
+                    <h3 style="color: #1a365d;">地图加载中...</h3>
+                    <p style="color: #718096;">如果地图没有显示，请<a href="中图铁路地图.html" target="_blank" style="color: #38b2ac; text-decoration: underline;">点击这里</a>在新窗口打开</p>
+                </div>
+            </div>
+            <div class="map-instructions">
+                <div class="instruction-item">
+                    <i class="fas fa-search"></i>
+                    <h4>搜索车站</h4>
+                    <p>输入站名或电报码，搜索并定位目标车站</p>
+                </div>
+                <div class="instruction-item">
+                    <i class="fas fa-route"></i>
+                    <h4>生成径路</h4>
+                    <p>点击生成径路，自动计算从钦州港到目标站的最短路径</p>
+                </div>
+                <div class="instruction-item">
+                    <i class="fas fa-expand-arrows-alt"></i>
+                    <h4>缩放平移</h4>
+                    <p>鼠标滚轮缩放，拖动平移地图查看铁路网络</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="section features">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-tag">
+                    <i class="fas fa-star"></i>
+                    核心功能
+                </div>
+                <h2 class="section-title">强大的功能特性</h2>
+                <p class="section-subtitle">
+                    融合现代Web技术与智能算法，打造专业级铁路网络可视化解决方案
+                </p>
+            </div>
+            
+            <div class="features-grid">
+                <div class="feature-card" data-delay="0">
+                    <div class="feature-icon">
+                        <i class="fas fa-map-marked-alt"></i>
+                    </div>
+                    <div class="feature-number">01</div>
+                    <h3 class="feature-title">铁路网络展示</h3>
+                    <p class="feature-description">
+                        基于D3.js构建的SVG矢量地图，支持节点、线路的精细渲染，
+                        实时缩放平移交互，流畅体验毫秒级响应
+                    </p>
+                    <div class="feature-tags">
+                        <span class="tag">D3.js</span>
+                        <span class="tag">SVG</span>
+                        <span class="tag">Canvas</span>
+                    </div>
+                </div>
+
+                <div class="feature-card" data-delay="100">
+                    <div class="feature-icon">
+                        <i class="fas fa-search-location"></i>
+                    </div>
+                    <div class="feature-number">02</div>
+                    <h3 class="feature-title">智能站点搜索</h3>
+                    <p class="feature-description">
+                        多维度模糊匹配技术，支持站名、电报码、节点ID等多种查询方式，
+                        毫秒级响应，精准定位目标车站
+                    </p>
+                    <div class="feature-tags">
+                        <span class="tag">模糊匹配</span>
+                        <span class="tag">索引优化</span>
+                    </div>
+                </div>
+
+                <div class="feature-card" data-delay="200">
+                    <div class="feature-icon">
+                        <i class="fas fa-route"></i>
+                    </div>
+                    <div class="feature-number">03</div>
+                    <h3 class="feature-title">最短径路生成</h3>
+                    <p class="feature-description">
+                        采用A*与Dijkstra混合算法，自动计算最短路径，
+                        支持禁行路段绕过，多路径智能对比选优
+                    </p>
+                    <div class="feature-tags">
+                        <span class="tag">A*算法</span>
+                        <span class="tag">Dijkstra</span>
+                    </div>
+                </div>
+
+                <div class="feature-card" data-delay="300">
+                    <div class="feature-icon">
+                        <i class="fas fa-palette"></i>
+                    </div>
+                    <div class="feature-number">04</div>
+                    <h3 class="feature-title">动态可视化</h3>
+                    <p class="feature-description">
+                        路径动画效果生动展示径路生成过程，
+                        逐点高亮营造行进感，颜色编码区分不同线路
+                    </p>
+                    <div class="feature-tags">
+                        <span class="tag">CSS动画</span>
+                        <span class="tag">渐变效果</span>
+                    </div>
+                </div>
+
+                <div class="feature-card" data-delay="400">
+                    <div class="feature-icon">
+                        <i class="fas fa-tachometer-alt"></i>
+                    </div>
+                    <div class="feature-number">05</div>
+                    <h3 class="feature-title">性能优化</h3>
+                    <p class="feature-description">
+                        节点索引O(1)查询，图数据结构的极致优化，
+                        批量DOM操作，流畅的用户交互体验
+                    </p>
+                    <div class="feature-tags">
+                        <span class="tag">数据结构</span>
+                        <span class="tag">算法优化</span>
+                    </div>
+                </div>
+
+                <div class="feature-card" data-delay="500">
+                    <div class="feature-icon">
+                        <i class="fas fa-file-excel"></i>
+                    </div>
+                    <div class="feature-number">06</div>
+                    <h3 class="feature-title">Excel集成</h3>
+                    <p class="feature-description">
+                        通过VBA与aardio实现Excel联动，双击到站单元格
+                        自动生成铁路径路，实现办公与地图的无缝对接
+                    </p>
+                    <div class="feature-tags">
+                        <span class="tag">COM通信</span>
+                        <span class="tag">进程管理</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture Section -->
+    <section id="architecture" class="section architecture">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-tag">
+                    <i class="fas fa-sitemap"></i>
+                    技术架构
+                </div>
+                <h2 class="section-title">模块化系统设计</h2>
+                <p class="section-subtitle">
+                    清晰的模块划分，高内聚低耦合，易于维护和扩展
+                </p>
+            </div>
+
+            <div class="architecture-diagram">
+                <div class="arch-layer arch-presentation">
+                    <div class="arch-layer-label">
+                        <i class="fas fa-desktop"></i>
+                        表现层
+                    </div>
+                    <div class="arch-nodes">
+                        <div class="arch-node arch-node-main" data-module="html">
+                            <i class="fas fa-file-code"></i>
+                            <span>index.html</span>
+                        </div>
+                        <div class="arch-node" data-module="css">
+                            <i class="fas fa-paint-brush"></i>
+                            <span>map.css</span>
+                        </div>
+                        <div class="arch-node" data-module="js">
+                            <i class="fas fa-code"></i>
+                            <span>map.js</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="arch-connector">
+                    <div class="connector-line"></div>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+
+                <div class="arch-layer arch-business">
+                    <div class="arch-layer-label">
+                        <i class="fas fa-cogs"></i>
+                        业务逻辑层
+                    </div>
+                    <div class="arch-nodes">
+                        <div class="arch-node arch-node-highlight" data-module="map">
+                            <i class="fas fa-globe-americas"></i>
+                            <span>Map.js<br><small>地图渲染</small></span>
+                        </div>
+                        <div class="arch-node arch-node-highlight" data-module="pathfinder">
+                            <i class="fas fa-search"></i>
+                            <span>PathFinder.js<br><small>路径规划</small></span>
+                        </div>
+                        <div class="arch-node" data-module="search">
+                            <i class="fas fa-binoculars"></i>
+                            <span>Search.js<br><small>站点搜索</small></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="arch-connector">
+                    <div class="connector-line"></div>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+
+                <div class="arch-layer arch-data">
+                    <div class="arch-layer-label">
+                        <i class="fas fa-database"></i>
+                        数据层
+                    </div>
+                    <div class="arch-nodes">
+                        <div class="arch-node" data-module="dnd">
+                            <i class="fas fa-dot-circle"></i>
+                            <span>getMapDndPoint.js<br><small>节点数据</small></span>
+                        </div>
+                        <div class="arch-node" data-module="dln">
+                            <i class="fas fa-link"></i>
+                            <span>getMapDlnPoint.js<br><small>线路数据</small></span>
+                        </div>
+                        <div class="arch-node" data-module="mid">
+                            <i class="fas fa-server"></i>
+                            <span>中间站数据.js<br><small>中间站</small></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="architecture-legend">
+                <div class="legend-item">
+                    <span class="legend-dot" style="background: #1a365d;"></span>
+                    <span>核心模块</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-dot" style="background: #38b2ac;"></span>
+                    <span>业务模块</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-dot" style="background: #718096;"></span>
+                    <span>数据模块</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Algorithm Section -->
+    <section id="algorithm" class="section algorithm">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-tag">
+                    <i class="fas fa-brain"></i>
+                    算法原理
+                </div>
+                <h2 class="section-title">智能路径规划</h2>
+                <p class="section-subtitle">
+                    融合启发式搜索与贪心策略，找到最优解的黄金组合
+                </p>
+            </div>
+
+            <div class="algorithm-grid">
+                <div class="algorithm-card algorithm-astar">
+                    <div class="alg-header">
+                        <div class="alg-icon">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <h3 class="alg-title">A* 算法</h3>
+                        <span class="alg-tag">启发式搜索</span>
+                    </div>
+                    
+                    <div class="alg-formula">
+                        <div class="formula-box">
+                            <span class="formula">f(n)</span>
+                            <span class="equals">=</span>
+                            <span class="formula">g(n)</span>
+                            <span class="plus">+</span>
+                            <span class="formula">h(n)</span>
+                        </div>
+                    </div>
+
+                    <div class="alg-explanation">
+                        <div class="explain-item">
+                            <div class="explain-icon">
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                            <div class="explain-text">
+                                <strong>g(n)</strong>
+                                <span>从起点到当前节点的实际代价</span>
+                            </div>
+                        </div>
+                        <div class="explain-item">
+                            <div class="explain-icon">
+                                <i class="fas fa-bullseye"></i>
+                            </div>
+                            <div class="explain-text">
+                                <strong>h(n)</strong>
+                                <span>从当前节点到终点的预估代价（启发函数）</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alg-steps">
+                        <div class="step active" data-step="1">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <strong>初始化</strong>
+                                <span>将起点加入开放列表</span>
+                            </div>
+                        </div>
+                        <div class="step" data-step="2">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <strong>选择节点</strong>
+                                <span>取出f值最小的节点</span>
+                            </div>
+                        </div>
+                        <div class="step" data-step="3">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <strong>扩展邻居</strong>
+                                <span>计算g值，更新最优路径</span>
+                            </div>
+                        </div>
+                        <div class="step" data-step="4">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <strong>到达终点</strong>
+                                <span>重建路径，返回结果</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alg-advantages">
+                        <div class="advantage">
+                            <i class="fas fa-bolt"></i>
+                            <span>高效快速</span>
+                        </div>
+                        <div class="advantage">
+                            <i class="fas fa-crosshairs"></i>
+                            <span>目标导向</span>
+                        </div>
+                        <div class="advantage">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span>性能优越</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="algorithm-card algorithm-dijkstra">
+                    <div class="alg-header">
+                        <div class="alg-icon">
+                            <i class="fas fa-wave-square"></i>
+                        </div>
+                        <h3 class="alg-title">Dijkstra 算法</h3>
+                        <span class="alg-tag">贪心策略</span>
+                    </div>
+                    
+                    <div class="alg-concept">
+                        <div class="concept-box">
+                            <i class="fas fa-balance-scale"></i>
+                            <p>优先队列 + 最短距离</p>
+                        </div>
+                    </div>
+
+                    <div class="alg-explanation">
+                        <div class="explain-item">
+                            <div class="explain-icon">
+                                <i class="fas fa-layer-group"></i>
+                            </div>
+                            <div class="explain-text">
+                                <strong>优先队列</strong>
+                                <span>使用最小堆管理待探索节点</span>
+                            </div>
+                        </div>
+                        <div class="explain-item">
+                            <div class="explain-icon">
+                                <i class="fas fa-hand-holding-usd"></i>
+                            </div>
+                            <div class="explain-text">
+                                <strong>贪心选择</strong>
+                                <span>每次取最短距离节点，保证全局最优</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alg-process">
+                        <div class="process-timeline">
+                            <div class="timeline-item">
+                                <div class="timeline-marker"></div>
+                                <div class="timeline-content">
+                                    <span class="timeline-title">初始化</span>
+                                    <span class="timeline-desc">所有节点距离=∞</span>
+                                </div>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="timeline-marker"></div>
+                                <div class="timeline-content">
+                                    <span class="timeline-title">迭代</span>
+                                    <span class="timeline-desc">取最小 → 更新邻居</span>
+                                </div>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="timeline-marker"></div>
+                                <div class="timeline-content">
+                                    <span class="timeline-title">完成</span>
+                                    <span class="timeline-desc">找到最短路径</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alg-advantages">
+                        <div class="advantage">
+                            <i class="fas fa-check-circle"></i>
+                            <span>全局最优</span>
+                        </div>
+                        <div class="advantage">
+                            <i class="fas fa-shield-alt"></i>
+                            <span>稳定可靠</span>
+                        </div>
+                        <div class="advantage">
+                            <i class="fas fa-balance-scale-left"></i>
+                            <span>保证准确</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="algorithm-comparison">
+                <h4 class="comparison-title">
+                    <i class="fas fa-balance-scale"></i>
+                    算法对比与选择策略
+                </h4>
+                <div class="comparison-table">
+                    <div class="compare-row compare-header">
+                        <div>场景</div>
+                        <div>算法选择</div>
+                        <div>原因</div>
+                    </div>
+                    <div class="compare-row">
+                        <div>普通车站查找</div>
+                        <div><span class="badge badge-primary">A*算法</span></div>
+                        <div>启发式搜索，效率高</div>
+                    </div>
+                    <div class="compare-row">
+                        <div>考虑里程约束</div>
+                        <div><span class="badge badge-secondary">Dijkstra</span></div>
+                        <div>保证最短路径</div>
+                    </div>
+                    <div class="compare-row">
+                        <div>绕过禁行路段</div>
+                        <div><span class="badge badge-primary">A* (ignore)</span></div>
+                        <div>忽略notPass标记</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Highlights Section -->
+    <section id="highlights" class="section highlights">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-tag">
+                    <i class="fas fa-lightbulb"></i>
+                    技术亮点
+                </div>
+                <h2 class="section-title">创新与优化</h2>
+                <p class="section-subtitle">
+                    每一处细节都经过精心打磨，追求极致的用户体验
+                </p>
+            </div>
+
+            <div class="highlights-grid">
+                <div class="highlight-card">
+                    <div class="highlight-visual">
+                        <div class="visual-circle">
+                            <span>O(1)</span>
+                        </div>
+                    </div>
+                    <div class="highlight-content">
+                        <h4>节点索引优化</h4>
+                        <p>使用HashMap建立节点索引，实现毫秒级查询响应，告别线性遍历的等待</p>
+                        <div class="highlight-code">
+                            nodeIndex[nodeId] → 节点对象
+                        </div>
+                    </div>
+                </div>
+
+                <div class="highlight-card">
+                    <div class="highlight-visual">
+                        <div class="visual-diagram">
+                            <svg viewBox="0 0 100 100">
+                                <circle cx="20" cy="80" r="8" fill="#1a365d"/>
+                                <circle cx="50" cy="50" r="8" fill="#38b2ac"/>
+                                <circle cx="80" cy="20" r="8" fill="#f6ad55"/>
+                                <line x1="20" y1="80" x2="50" y2="50" stroke="#ccc" stroke-width="2"/>
+                                <line x1="50" y1="50" x2="80" y2="20" stroke="#ccc" stroke-width="2"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="highlight-content">
+                        <h4>图数据结构</h4>
+                        <p>优化的邻接表表示，节点与边分离存储，空间效率与查询速度的完美平衡</p>
+                        <div class="highlight-tags">
+                            <span>邻接表</span>
+                            <span>双向索引</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="highlight-card">
+                    <div class="highlight-visual">
+                        <div class="visual-animation">
+                            <div class="animation-bar" style="--delay: 0"></div>
+                            <div class="animation-bar" style="--delay: 1"></div>
+                            <div class="animation-bar" style="--delay: 2"></div>
+                            <div class="animation-bar" style="--delay: 3"></div>
+                            <div class="animation-bar" style="--delay: 4"></div>
+                        </div>
+                    </div>
+                    <div class="highlight-content">
+                        <h4>批量DOM操作</h4>
+                        <p>D3.js的数据绑定批量更新，减少重排重绘，流畅的动画渲染体验</p>
+                        <div class="highlight-tags">
+                            <span>D3绑定</span>
+                            <span>requestAnimationFrame</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="highlight-card">
+                    <div class="highlight-visual">
+                        <div class="visual-path">
+                            <svg viewBox="0 0 100 60">
+                                <path class="path-line" d="M5,55 Q25,10 50,30 T95,5" fill="none"/>
+                                <circle class="path-dot" r="4" fill="#1a365d"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="highlight-content">
+                        <h4>路径动画</h4>
+                        <p>逐点高亮的动画效果，模拟列车行进轨迹，让技术展示更加生动直观</p>
+                        <div class="highlight-tags">
+                            <span>CSS动画</span>
+                            <span>时间轴控制</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="highlight-card">
+                    <div class="highlight-visual">
+                        <div class="visual-colors">
+                            <div class="color-swatch" style="background: #1a365d;"></div>
+                            <div class="color-swatch" style="background: #38b2ac;"></div>
+                            <div class="color-swatch" style="background: #f6ad55;"></div>
+                            <div class="color-swatch" style="background: #22CEFF;"></div>
+                            <div class="color-swatch" style="background: #00FF00;"></div>
+                        </div>
+                    </div>
+                    <div class="highlight-content">
+                        <h4>颜色编码</h4>
+                        <p>根据铁路线路代码动态配色，不同路局一目了然，信息层次清晰分明</p>
+                        <div class="highlight-tags">
+                            <span>动态着色</span>
+                            <span>lj_color_list</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="highlight-card">
+                    <div class="highlight-visual">
+                        <div class="visual-zoom">
+                            <div class="zoom-box">
+                                <span>1x</span>
+                            </div>
+                            <div class="zoom-arrow">
+                                <i class="fas fa-arrows-alt-h"></i>
+                            </div>
+                            <div class="zoom-box zoom-lg">
+                                <span>10x</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="highlight-content">
+                        <h4>智能缩放</h4>
+                        <p>自动计算最佳缩放比例，路径自适应显示，智能padding边距处理</p>
+                        <div class="highlight-code">
+                            scale = min(scaleX, scaleY)
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Data Flow Section -->
+    <section class="section dataflow">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-tag">
+                    <i class="fas fa-project-diagram"></i>
+                    数据流程
+                </div>
+                <h2 class="section-title">从输入到输出的完整旅程</h2>
+                <p class="section-subtitle">
+                    每一步都经过精心设计，确保最佳用户体验
+                </p>
+            </div>
+
+            <div class="flow-container">
+                <div class="flow-timeline">
+                    <div class="flow-step">
+                        <div class="flow-icon">
+                            <i class="fas fa-keyboard"></i>
+                        </div>
+                        <div class="flow-content">
+                            <h4>用户输入</h4>
+                            <p>输入终点站名称或电报码</p>
+                        </div>
+                        <div class="flow-connector">
+                            <div class="connector-line"></div>
+                            <i class="fas fa-arrow-right"></i>
+                        </div>
+                    </div>
+
+                    <div class="flow-step">
+                        <div class="flow-icon">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <div class="flow-content">
+                            <h4>站点匹配</h4>
+                            <p>多维度模糊搜索定位目标站</p>
+                        </div>
+                        <div class="flow-connector">
+                            <div class="connector-line"></div>
+                            <i class="fas fa-arrow-right"></i>
+                        </div>
+                    </div>
+
+                    <div class="flow-step">
+                        <div class="flow-icon">
+                            <i class="fas fa-calculator"></i>
+                        </div>
+                        <div class="flow-content">
+                            <h4>路径计算</h4>
+                            <p>A*算法智能规划最短径路</p>
+                        </div>
+                        <div class="flow-connector">
+                            <div class="connector-line"></div>
+                            <i class="fas fa-arrow-right"></i>
+                        </div>
+                    </div>
+
+                    <div class="flow-step">
+                        <div class="flow-icon">
+                            <i class="fas fa-paint-brush"></i>
+                        </div>
+                        <div class="flow-content">
+                            <h4>可视化渲染</h4>
+                            <p>D3.js动态绘制路径动画</p>
+                        </div>
+                        <div class="flow-connector">
+                            <div class="connector-line"></div>
+                            <i class="fas fa-arrow-right"></i>
+                        </div>
+                    </div>
+
+                    <div class="flow-step">
+                        <div class="flow-icon">
+                            <i class="fas fa-eye"></i>
+                        </div>
+                        <div class="flow-content">
+                            <h4>结果显示</h4>
+                            <p>展示径路信息与里程统计</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Excel Integration Section -->
+    <section id="integration" class="section integration">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-tag">
+                    <i class="fas fa-link"></i>
+                    系统集成
+                </div>
+                <h2 class="section-title">Excel联动功能</h2>
+                <p class="section-subtitle">
+                    将铁路地图与Excel无缝对接，双击到站单元格即可生成路径
+                </p>
+            </div>
+
+            <div class="integration-content">
+                <div class="integration-workflow">
+                    <div class="workflow-step">
+                        <div class="workflow-icon excel">
+                            <i class="fas fa-table"></i>
+                        </div>
+                        <div class="workflow-info">
+                            <h4>Excel表格</h4>
+                            <p>用户在Excel中双击H列到站单元格</p>
+                        </div>
+                    </div>
+                    
+                    <div class="workflow-arrow">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+
+                    <div class="workflow-step">
+                        <div class="workflow-icon vba">
+                            <i class="fas fa-code"></i>
+                        </div>
+                        <div class="workflow-info">
+                            <h4>VBA事件</h4>
+                            <p>触发BeforeDoubleClick事件，提取到站名称</p>
+                        </div>
+                    </div>
+
+                    <div class="workflow-arrow">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+
+                    <div class="workflow-step">
+                        <div class="workflow-icon com">
+                            <i class="fas fa-plug"></i>
+                        </div>
+                        <div class="workflow-info">
+                            <h4>COM通信</h4>
+                            <p>通过COM对象调用aardio的cx方法</p>
+                        </div>
+                    </div>
+
+                    <div class="workflow-arrow">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+
+                    <div class="workflow-step">
+                        <div class="workflow-icon map">
+                            <i class="fas fa-map-marked-alt"></i>
+                        </div>
+                        <div class="workflow-info">
+                            <h4>地图展示</h4>
+                            <p>自动生成并渲染最短径路</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="integration-cards">
+                    <div class="integration-card">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <i class="fas fa-file-excel"></i>
+                            </div>
+                            <h3>VBA代码示例</h3>
+                        </div>
+                        <div class="card-code">
+<pre><code class="language-vba">Private Sub Worksheet_BeforeDoubleClick( _
+    ByVal Target As Range, Cancel As Boolean)
+    
+    ' 只响应H列
+    If Target.Column <> 8 Then Exit Sub
+    Cancel = True
+    
+    val = Trim(Target.Value)
+    If val <> "" Then
+        ad.cx val  ' 调用COM对象生成路径
+    End If
+End Sub</code></pre>
+                        </div>
+                    </div>
+
+                    <div class="integration-card">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <i class="fas fa-box"></i>
+                            </div>
+                            <h3>aardio封装</h3>
+                        </div>
+                        <div class="card-code">
+<pre><code class="language-javascript">var ad = {
+    msg = "连接成功！",
+    cx = function(e) {
+        if (!wb) return null;
+        var cz = "generatePath('" ++ e ++ "')";
+        return wb.eval(cz);
+    }
+};
+xl.vba.Getadobj(ad);</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="integration-features">
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <i class="fas fa-mouse-pointer"></i>
+                        </div>
+                        <h4>一键生成</h4>
+                        <p>双击单元格即可生成路径，无需手动输入</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <i class="fas fa-unlock"></i>
+                        </div>
+                        <h4>实时联动</h4>
+                        <p>Excel与地图实时同步，数据无缝对接</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <h4>进程管理</h4>
+                        <p>智能检测进程状态，确保单实例运行</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <div class="brand-logo">
+                        <i class="fas fa-subway"></i>
+                        <span>铁路地图</span>
+                    </div>
+                    <p class="brand-description">
+                        用技术驱动创新，用代码构建未来
+                    </p>
+                </div>
+                <div class="footer-links">
+                    <h5>快速链接</h5>
+                    <ul>
+                        <li><a href="#home">首页</a></li>
+                        <li><a href="#map-demo">地图演示</a></li>
+                        <li><a href="#features">核心功能</a></li>
+                        <li><a href="#architecture">技术架构</a></li>
+                        <li><a href="#algorithm">算法原理</a></li>
+                        <li><a href="#integration">系统集成</a></li>
+                    </ul>
+                </div>
+                <div class="footer-tech">
+                    <h5>技术栈</h5>
+                    <div class="tech-tags">
+                        <span>D3.js</span>
+                        <span>jQuery</span>
+                        <span>A*算法</span>
+                        <span>Dijkstra</span>
+                        <span>SVG</span>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 中图铁路地图. 用 ❤️ 与代码构建</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

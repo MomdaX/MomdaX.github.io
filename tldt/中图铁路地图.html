@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>中图铁路地图</title>
+    <link rel="icon" href="v1.0/images/logo1.ico" type="image/x-icon"/>
+
+    <link href="v1.0/css/cljl.css" rel="stylesheet"/>
+    <link href="v1.0/css/layer.css" rel="stylesheet"/>
+    <link href="v1.0/css/map.css?v=1.5" rel="stylesheet"/>
+
+    <script src="v1.0/js/jquery.min.js"></script>
+    <script src="v1.0/js/d3.min.js"></script>
+    <script src="v1.0/js/layer.js"></script>
+
+    <script src="v1.0/mapData/getMapDftPoint.js"></script>
+    <script src="v1.0/mapData/getMapDlnPoint.js"></script>
+    <script src="v1.0/mapData/getMapDndPoint.js"></script>
+    <script src="v1.0/mapData/getReleaseVersionData.js"></script>
+    <script src="v1.0/mapData/getMapColor.js"></script>
+    <script src="v1.0/mapData/中间站数据.js"></script>
+    <script src="v1.0/js/map.js?v=1.7"></script>
+    <script src="v1.0/js/search.js"></script>
+
+    <link href="v1.0/css/jl.css?v=1.5" rel="stylesheet"/>
+    <script src="v1.0/js/jl.js?v=2.0"></script>
+    <script src="v1.0/js/PathFinding.js"></script>
+    <script src="v1.0/js/pathFinder.js"></script>
+
+    <link href="v1.0/iconfontLiuliang/iconfont.css?v=1.3" rel="stylesheet"/>
+
+    <script>
+        var map_version    = "C260201";
+        var map_width      = 2314;
+        var map_height     = 1418;
+        var lj_color_list  = ["#000000","#ef4136","#00FF00","#ef4136","#22CEFF","#f47920","#00FF00","#22CEFF","#ef4136","#22CEFF","#ef4136","#00FF00","#ef4136","#22CEFF","#00FF00","#ef4136","#22CEFF","#00FF00","#ef4136"];
+
+        var map;
+        var jl;
+        var search;
+        var pathFinder;
+        var defaultStartStation = window.QZCWD_QVZ ? window.QZCWD_QVZ.zm : "钦州港";
+        var currentEndStation = "";
+
+        $(document).ready(function(){
+            $(document).bind("contextmenu", function(e){
+                return false;
+            });
+
+            search = new Search();
+            pathFinder = new PathFinder();
+
+            function resizeMap() {
+                var right_svg_width = $(window).width();
+                $(".right_svg").width(right_svg_width);
+
+                var right_svg_height = $(window).height();
+                $(".right_svg").height(right_svg_height);
+
+                $("svg").width(right_svg_width);
+                $("svg").height(right_svg_height - $(".right_svg_version").height() - $(".right_svg_prompt").height());
+            }
+
+            $(window).resize(resizeMap);
+
+            resizeMap();
+
+            map = new Map($("svg").height(), $("svg").width());
+            map.createMap();
+
+            jl = new Jl();
+        });
+
+        var midStationsVisible = false;
+
+        function toggleMidStations() {
+            var toggleInput = document.getElementById('midStationToggle');
+            midStationsVisible = toggleInput.checked;
+            
+            if (midStationsVisible) {
+                map.drawLocalMidStations();
+                document.querySelector('.right_svg_prompt').textContent = "显示中间站";
+            } else {
+                map.restartMap();
+                document.querySelector('.right_svg_prompt').textContent = "隐藏中间站";
+            }
+        }
+
+        function getStationLh(zmOrLh) {
+            if (!pathFinder) {
+                return zmOrLh.toUpperCase();
+            }
+            
+            pathFinder.init();
+            var node = pathFinder.findNodeByNameOrCode(zmOrLh);
+            if (node && node.lh) {
+                return node.lh;
+            }
+            
+            return zmOrLh.toUpperCase();
+        }
+
+        function generatePath(endStation) {
+            if (!pathFinder || !jl) {
+                console.log("错误：地图组件尚未初始化完成，请等待页面加载完毕");
+                return null;
+            }
+            
+            if (!endStation || endStation.trim() === "") {
+                console.log("请输入终点站名称或电报码");
+                return null;
+            }
+            
+            var loadingIndex = layer.load(1);
+            
+            var startLh = "QVZ";
+            var endLh = getStationLh(endStation);
+            
+            console.log("径路查询: " + startLh + " -> " + endLh);
+            
+            jl.requestJl(startLh, endLh, function(msg, errorMsg) {
+                layer.close(loadingIndex);
+                
+                if (msg && msg.path && msg.path.length > 0) {
+                    console.log("使用后端径路数据");
+                    jl.clear();
+                    jl.jlout = msg;
+                    
+                    zoomToFitPath(msg);
+                    
+                    setTimeout(function() {
+                        drawLocalJl(msg, null);
+                        var fz = msg.fz;
+                        var dz = msg.dz;
+                        var lc = msg.lc[0];
+                        var prompt = "最短径路 : " + fz.zm + " -> " + dz.zm + " " + lc + "公里";
+                        $(".right_svg_prompt").html(prompt);
+                        currentEndStation = endStation;
+                    }, 500);
+                } else {
+                    var errMsg = errorMsg === 'Not Found' ? '接口未找到' : 
+                                 errorMsg === 'NetworkError' ? '网络异常' : 
+                                 '请求失败';
+                    console.log("后端" + errMsg + "，使用本地计算");
+                    generatePathLocal(endStation);
+                }
+            });
+        }
+        
+        function generatePathLocal(endStation) {
+            var result = pathFinder.findPath(defaultStartStation, endStation);
+            if (result) {
+                jl.clear();
+                jl.jlout = result;
+                
+                zoomToFitPath(result);
+                
+                setTimeout(function() {
+                    drawLocalJl(result, null);
+                    var fz = result.fz;
+                    var dz = result.dz;
+                    var lc = result.lc[0];
+                    var prompt = "最短径路(本地) : " + fz.zm + " -> " + dz.zm + " " + lc + "公里";
+                    $(".right_svg_prompt").html(prompt);
+                    currentEndStation = endStation;
+                }, 500);
+                
+                return result;
+            }
+            
+            var errorMsg = "未找到从 " + defaultStartStation + " 到 " + endStation + " 的径路";
+            console.log(errorMsg);
+            $(".right_svg_prompt").html('<span style="color: #ef4136;">' + errorMsg + '</span>');
+            return null;
+        }
+        
+        window.generatePath = generatePath;
+        
+        function zoomToFitPath(result) {
+            if (!result || !result.path || result.path.length === 0) {
+                return;
+            }
+            
+            var path = result.path;
+            var xs = path.map(function(d) { return d.x; });
+            var ys = path.map(function(d) { return d.y; });
+            
+            var minx = d3.min(xs);
+            var miny = d3.min(ys);
+            var maxx = d3.max(xs);
+            var maxy = d3.max(ys);
+            
+            var width = maxx - minx;
+            var height = maxy - miny;
+            
+            var padding = 0.15;
+            var scaleX = map_width * (1 - padding * 2) / width;
+            var scaleY = map_height * (1 - padding * 2) / height;
+            
+            var scale = Math.min(scaleX, scaleY);
+            scale = Math.max(scale, 1);
+            scale = Math.min(scale, 10);
+            
+            var centerX = (minx + maxx) / 2;
+            var centerY = (miny + maxy) / 2;
+            
+            var transform = d3.zoomIdentity;
+            transform.k = scale;
+            transform.x = -centerX * scale;
+            transform.y = -centerY * scale;
+            
+            map.transformDom(transform);
+        }
+
+        function onStationInput() {
+            var input = document.getElementById('stationSearchInput');
+            if (!input || !input.value.trim()) {
+                return;
+            }
+            
+            generatePath(input.value.trim());
+        }
+
+        function onMapClick(nodeData) {
+            if (nodeData && nodeData.zm) {
+                generatePath(nodeData.zm);
+                document.getElementById('stationSearchInput').value = nodeData.zm;
+            }
+        }
+
+        function drawLocalJl(data, foundStation) {
+            d3.selectAll(".map_path").remove();
+            d3.selectAll(".path_end_station").remove();
+            
+            d3.selectAll(".map_circle").each(function() {
+                var lj = d3.select(this).attr("lj");
+                if (lj && window.lj_color_list && lj_color_list[lj]) {
+                    d3.select(this).style("fill", lj_color_list[lj]);
+                }
+            });
+            
+            d3.selectAll(".mid_station_node").each(function() {
+                var lj = d3.select(this).attr("lj");
+                if (lj && window.lj_color_list && lj_color_list[lj]) {
+                    d3.select(this).style("fill", lj_color_list[lj]);
+                }
+            });
+            
+            var lineFunction = d3.line()
+                                 .x(function(d){ return d.x; })
+                                 .y(function(d){ return d.y; });
+            
+            var pathLength = data.path.length;
+            var animationDelay = 100;
+            
+            map.getGroup().insert("path", ".map_circle")
+               .attr("class", "map_path")
+               .attr("d", lineFunction(data.path))
+               .style("stroke-width", map.getCurrentPathStroke())
+               .on("mouseover", function(){ d3.select(this).style("stroke-width", map.getCurrentPathStroke() * 1.5); })
+               .on("mouseout", function(){ d3.select(this).style("stroke-width", map.getCurrentPathStroke()); });
+            
+            if (data.path[0] && data.path[0].id) {
+                var startDom = d3.select("#" + data.path[0].id);
+                if (!startDom.empty()) {
+                    startDom.style("fill", "#FE4B4B");
+                }
+            }
+            
+            for (var i = 1; i < pathLength; i++) {
+                (function(index) {
+                    setTimeout(function() {
+                        var currentNode = data.path[index];
+                        if (currentNode.id) {
+                            var dom = d3.select("#" + currentNode.id);
+                            if (!dom.empty()) {
+                                dom.style("fill", index == pathLength - 1 ? "#3462FB" : "#FFFF00");
+                            }
+                        }
+                    }, index * animationDelay);
+                })(i);
+            }
+            
+            if (data.path.length > 0) {
+                var endNode = data.path[data.path.length - 1];
+                setTimeout(function() {
+                    var endDom = null;
+                    
+                    if (endNode && endNode.id) {
+                        endDom = d3.select("#" + endNode.id);
+                    }
+                    
+                    if (!endDom || endDom.empty()) {
+                        if (data.dz && data.dz.id) {
+                            endDom = d3.select("#" + data.dz.id);
+                        }
+                    }
+                    
+                    if (!endDom || endDom.empty()) {
+                        if (data.dz && data.dz.x !== undefined && data.dz.y !== undefined && data.dz.zm) {
+                            var angle = 0;
+                            
+                            if (window.中间站数据) {
+                                for (var lj in window.中间站数据) {
+                                    if (window.中间站数据.hasOwnProperty(lj)) {
+                                        var stations = window.中间站数据[lj];
+                                        for (var i = 0; i < stations.length; i++) {
+                                            if (stations[i].zm === data.dz.zm) {
+                                                angle = stations[i].angle || 0;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            var stationData = {
+                                id: data.dz.zm + "_mid",
+                                zm: data.dz.zm,
+                                x: data.dz.x,
+                                y: data.dz.y,
+                                fq: data.dz.fq_dm || 0,
+                                angle: angle
+                            };
+                            map.drawSingleMidStation(stationData);
+                            
+                            d3.select("#" + data.dz.zm + "_mid").style("fill", "#3462FB");
+                            return;
+                        }
+                    }
+                    
+                    if (endDom && !endDom.empty()) {
+                        endDom.style("fill", "#3462FB");
+                    }
+                }, pathLength * animationDelay);
+            }
+            
+            if (foundStation && foundStation.isMidStation) {
+                setTimeout(function() {
+                    d3.select(".mapGroup").append("circle")
+                        .attr("class", "mid_station_node path_end_station")
+                        .attr("id", foundStation.zm + "_path_end")
+                        .attr("cx", foundStation.x)
+                        .attr("cy", foundStation.y)
+                        .attr("lj", foundStation.fq ? parseInt(foundStation.fq/100) : 0)
+                        .style("fill", "#3462FB")
+                        .style("r", 5);
+                }, (pathLength - 1) * animationDelay);
+            }
+            
+            if (data.fjz && data.fjz.length > 0) {
+                setTimeout(function() {
+                    for (var j = 0; j < data.fjz.length; j++) {
+                        if (data.fjz[j].id && data.fjz[j].big_or_small === 1) {
+                            d3.select("#" + data.fjz[j].id).style("fill", "#FF9900");
+                        }
+                    }
+                }, pathLength * animationDelay);
+            }
+        }
+    </script>
+</head>
+<body>
+    <div class="cljl_container">
+        <div class="main" id="cljl_main_svg">
+            <div class="right_svg" id="cljl_right_svg">
+                <div class="right_svg_version">
+                    <div id="Sleft_toolbar" role="toolbar" aria-label="Toolbar with button groups" class="SLeft_toolbar">
+                        <div class='btn-group' role='group' aria-label='Second group'>
+                            <input type="text" id="stationSearchInput" placeholder="输入终点站名/电报码(起点:钦州港)" style="padding: 2px 5px; border-radius: 3px; border: 1px solid #ccc; margin-right: 5px;" onkeydown="if(event.keyCode===13){onStationInput();}">
+                            <button style="background-color: #2196F3; color: white; padding: 2px 8px; border-radius: 3px; cursor: pointer; border: none;" onclick="onStationInput()" title="生成径路">生成径路</button>
+                            <span class="iconfont toolbar_icon" style="background-color: #4CAF50; color: white; padding: 2px 5px; border-radius: 3px; cursor: pointer" onclick="search.searchStationByName(document.getElementById('stationSearchInput').value)" title="搜索定位车站">搜索定位</span>
+                        </div>
+                    </div>
+                    <div class="toggle-switch-container" style="position: absolute; top: 10px; right: 10px; z-index: 1000;" title="显示/隐藏中间站">
+                        <input type="checkbox" id="midStationToggle" class="toggle-input" onchange="toggleMidStations()">
+                        <label for="midStationToggle" class="toggle-label"></label>
+                    </div>
+                </div>
+                <svg class="svg_map"></svg>
+                <div class="right_svg_prompt"></div>
+                <style>
+                    .toggle-switch-container {
+                        position: relative;
+                        display: inline-block;
+                        cursor: pointer;
+                        margin: 0 5px;
+                    }
+                    .toggle-input {
+                        display: none;
+                    }
+                    .toggle-label {
+                        position: relative;
+                        display: inline-block;
+                        width: 40px;
+                        height: 20px;
+                        background-color: #ccc;
+                        border-radius: 20px;
+                        transition: all 0.3s;
+                    }
+                    .toggle-label::before {
+                        content: '';
+                        position: absolute;
+                        top: 2px;
+                        left: 2px;
+                        width: 16px;
+                        height: 16px;
+                        background-color: white;
+                        border-radius: 50%;
+                        transition: all 0.3s;
+                    }
+                    .toggle-input:checked + .toggle-label {
+                        background-color: #2cf025;
+                    }
+                    .toggle-input:checked + .toggle-label::before {
+                        transform: translateX(20px);
+                    }
+                </style>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

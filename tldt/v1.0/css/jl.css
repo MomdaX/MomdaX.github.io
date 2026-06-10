@@ -1,0 +1,83 @@
+.map_path{
+    cursor: pointer;
+    fill: none;
+    stroke: yellow;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    pointer-events: stroke;
+    stroke-dasharray: 8000;
+    stroke-dashoffset: 8000;
+    animation: dash 20s linear forwards;
+    /* stroke-opacity:.7; */
+}
+@keyframes dash {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+.map_path1{
+    cursor: pointer;
+    fill: none;
+    stroke: yellow;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    pointer-events: stroke;
+    /* stroke-opacity:.7; */
+}
+#jloutputTable{
+    font-size: 13px;
+    border:0px;
+    cellspacing:0px;
+    cellpadding:0px;
+    border-right:1px solid #dddddf;
+    border-bottom:1px solid #dddddf;
+}
+#jloutputTable td{
+    min-width:60px;
+    height: 30px;
+    border-left:1px solid #dddddf;
+    border-top:1px solid #dddddf;
+    padding-left: 3px;
+}
+
+.ripple1 {
+    width: 8px;
+    height: 8px;
+    background-color: #f37b1d;
+    position: fixed;
+    border-radius: 50%;
+    border: 1px solid #ffffff59;
+}
+.ripple2 {
+    width: 8px;
+    height: 8px;
+    background-color: #fbbd08;
+    position: fixed;
+    border-radius: 50%;
+    border: 1px solid #ffffff59;
+}
+.ripple3 {
+    width: 8px;
+    height: 8px;
+    background-color: #ffff00;
+    position: fixed;
+    border-radius: 50%;
+    border: 1px solid #ffffff59;
+}
+@keyframes ripple-effect1 {
+    to {
+        transform: scale(12);
+        opacity: 0.1;
+    }
+}
+@keyframes ripple-effect2 {
+    0% {
+        r: 0.5;
+        opacity: 1;
+    }
+    100% {
+        r: 30;
+        opacity: 0.1;
+    }
+}
+

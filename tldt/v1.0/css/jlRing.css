@@ -1,0 +1,18 @@
+.map_ring_path1{
+    cursor: pointer;
+    fill: none;
+    stroke: yellow;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    pointer-events: stroke;
+    /* stroke-opacity:.7; */
+}
+.map_ring_path2{
+    cursor: pointer;
+    fill: none;
+    stroke: #22CE65;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    pointer-events: stroke;
+    /* stroke-opacity:.7; */
+}
