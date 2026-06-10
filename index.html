@@ -425,13 +425,30 @@
             }, 520);
         }
         
-        function initMusicPlayer() {
-            const audioFiles = [
-                { title: 'Call Me Tonight', artist: 'Unknown Artist', path: 'assets/audio/CallMe Tonight.mp3' }
-            ];
+        async function initMusicPlayer() {
+            let audioFiles = [];
+            
+            try {
+                const response = await fetch('assets/audio/music.json');
+                if (response.ok) {
+                    audioFiles = await response.json();
+                }
+            } catch (e) {
+                console.error('Failed to load music list:', e);
+                audioFiles = [
+                    { title: 'Call Me Tonight', artist: 'Unknown Artist', path: 'assets/audio/CallMe Tonight.mp3' }
+                ];
+            }
+            
+            if (audioFiles.length === 0) {
+                audioFiles = [
+                    { title: 'No Music Found', artist: '-', path: '' }
+                ];
+            }
             
             let currentTrack = 0;
             let audio = null;
+            let isPlaying = false;
             const playBtn = document.getElementById('playBtn');
             const prevBtn = document.getElementById('prevBtn');
             const nextBtn = document.getElementById('nextBtn');
@@ -441,9 +458,13 @@
             const musicTitle = document.getElementById('musicTitle');
             const musicArtist = document.getElementById('musicArtist');
             
-            function initAudio() {
+            function initAudio(autoplay = false) {
                 if (audio) {
                     audio.pause();
+                    audio.removeEventListener('timeupdate', updateProgress);
+                    audio.removeEventListener('loadedmetadata', updateDuration);
+                    audio.removeEventListener('ended', onTrackEnded);
+                    audio.removeEventListener('error', handleAudioError);
                     audio = null;
                 }
                 
@@ -458,36 +479,43 @@
                 audio.addEventListener('loadedmetadata', updateDuration);
                 audio.addEventListener('ended', onTrackEnded);
                 audio.addEventListener('error', handleAudioError);
+                
+                if (autoplay) {
+                    audio.play().catch(e => console.error('Play error:', e));
+                }
             }
             
             function updateProgress() {
-                if (!audio) return;
+                if (!audio || isNaN(audio.duration)) return;
                 const percent = (audio.currentTime / audio.duration) * 100;
                 progressFill.style.width = percent + '%';
                 updateTimeDisplay();
             }
             
             function updateDuration() {
-                updateTimeDisplay();
+                if (!audio || isNaN(audio.duration)) {
+                    timeDisplay.textContent = '0:00 / 0:00';
+                } else {
+                    updateTimeDisplay();
+                }
             }
             
             function updateTimeDisplay() {
-                if (!audio) return;
+                if (!audio || isNaN(audio.duration)) return;
                 const current = formatTime(audio.currentTime);
                 const duration = formatTime(audio.duration);
                 timeDisplay.textContent = `${current} / ${duration}`;
             }
             
             function formatTime(seconds) {
+                if (isNaN(seconds)) return '0:00';
                 const mins = Math.floor(seconds / 60);
                 const secs = Math.floor(seconds % 60);
                 return `${mins}:${secs.toString().padStart(2, '0')}`;
             }
             
             function onTrackEnded() {
-                currentTrack = (currentTrack + 1) % audioFiles.length;
-                initAudio();
-                audio.play().catch(() => {});
+                nextTrack();
             }
             
             function handleAudioError(e) {
@@ -496,38 +524,44 @@
             
             function togglePlay() {
                 if (!audio) {
-                    initAudio();
+                    initAudio(true);
+                    isPlaying = true;
+                    playBtn.textContent = '⏸';
+                    return;
                 }
                 
                 if (audio.paused) {
-                    audio.play().catch(() => {
+                    audio.play().catch(e => {
+                        console.error('Play error:', e);
                         playBtn.textContent = '▶';
                     });
+                    isPlaying = true;
                     playBtn.textContent = '⏸';
                 } else {
                     audio.pause();
+                    isPlaying = false;
                     playBtn.textContent = '▶';
                 }
             }
             
             function prevTrack() {
                 currentTrack = (currentTrack - 1 + audioFiles.length) % audioFiles.length;
-                initAudio();
-                if (playBtn.textContent === '⏸') {
-                    audio.play().catch(() => {});
+                initAudio(isPlaying);
+                if (isPlaying) {
+                    playBtn.textContent = '⏸';
                 }
             }
             
             function nextTrack() {
                 currentTrack = (currentTrack + 1) % audioFiles.length;
-                initAudio();
-                if (playBtn.textContent === '⏸') {
-                    audio.play().catch(() => {});
+                initAudio(isPlaying);
+                if (isPlaying) {
+                    playBtn.textContent = '⏸';
                 }
             }
             
             function seekTo(e) {
-                if (!audio) return;
+                if (!audio || isNaN(audio.duration)) return;
                 const rect = progressBar.getBoundingClientRect();
                 const percent = (e.clientX - rect.left) / rect.width;
                 audio.currentTime = percent * audio.duration;
@@ -540,10 +574,11 @@
             
             window.musicPlayer = {
                 play: togglePlay,
-                pause: () => { if (audio && !audio.paused) audio.pause(); },
+                pause: () => { if (audio && !audio.paused) { audio.pause(); isPlaying = false; playBtn.textContent = '▶'; } },
                 next: nextTrack,
                 prev: prevTrack,
-                audio: audio
+                currentTrack: () => currentTrack,
+                totalTracks: () => audioFiles.length
             };
         }
     </script>
