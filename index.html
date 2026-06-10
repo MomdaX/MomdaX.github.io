@@ -64,9 +64,50 @@
             transform: translateY(-1px);
         }
         .footer {
-            margin-top: 50px;
+            margin-top: 40px;
             color: #999;
             font-size: 0.9rem;
+        }
+        .nav-wall {
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid #eee;
+        }
+        .nav-wall h2 {
+            font-size: 1.2rem;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .nav-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 8px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            border-radius: 10px;
+            text-decoration: none;
+            color: #555;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border: 1px solid #ddd;
+        }
+        .nav-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+        }
+        .nav-icon {
+            text-align: center;
         }
         #particle-canvas {
             position: fixed;
@@ -142,6 +183,37 @@
             <a href="dcjh/" class="link-btn">调车计划</a>
             <a href="tldt/" class="link-btn">铁路地图</a>
         </div>
+        
+        <div class="nav-wall">
+            <h2>常用网站</h2>
+            <div class="nav-grid">
+                <a href="https://github.com" target="_blank" class="nav-item" title="GitHub">
+                    <span class="nav-icon">GitHub</span>
+                </a>
+                <a href="https://www.google.com" target="_blank" class="nav-item" title="Google">
+                    <span class="nav-icon">Google</span>
+                </a>
+                <a href="https://www.baidu.com" target="_blank" class="nav-item" title="百度">
+                    <span class="nav-icon">百度</span>
+                </a>
+                <a href="https://www.bing.com" target="_blank" class="nav-item" title="Bing">
+                    <span class="nav-icon">Bing</span>
+                </a>
+                <a href="https://www.csdn.net" target="_blank" class="nav-item" title="CSDN">
+                    <span class="nav-icon">CSDN</span>
+                </a>
+                <a href="https://stackoverflow.com" target="_blank" class="nav-item" title="Stack Overflow">
+                    <span class="nav-icon">Stack</span>
+                </a>
+                <a href="https://www.npmjs.com" target="_blank" class="nav-item" title="npm">
+                    <span class="nav-icon">npm</span>
+                </a>
+                <a href="https://codepen.io" target="_blank" class="nav-item" title="CodePen">
+                    <span class="nav-icon">CodePen</span>
+                </a>
+            </div>
+        </div>
+        
         <div class="footer">
             © 2026 网站导航
         </div>
