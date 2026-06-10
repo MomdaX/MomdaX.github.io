@@ -288,15 +288,18 @@ class TrackBuilder {
 
         for (let i = 0; i < 2; i++) {
             const headlight = new THREE.SpotLight(p.headlightColor, this.headlightOn ? p.headlightIntensity : 0);
-            headlight.position.set(0, 0, 0);
-            headlight.target.position.set(0, -0.5, 20);
-            headlight.distance = p.headlightDistance;
+            const xOffset = (i === 0 ? -0.25 : 0.25) * p.trainScale; // 车灯左右偏移（左负右正）
+            headlight.position.set(-28 * p.trainScale, -0.1 * p.trainScale, xOffset); // 车灯位置（X:车头方向, Y:高度, Z:左右）
+            headlight.target.position.set(35 * p.trainScale, 0.2 * p.trainScale, xOffset); // 灯光照射目标点（沿车头方向）
+            headlight.distance = p.headlightDistance; // 灯光照射距离
             headlight.angle = p.headlightAngle;
             headlight.penumbra = p.headlightPenumbra;
             headlight.decay = 1.5;
-            headlight.castShadow = false;
+            headlight.castShadow = true;
+            headlight.shadow.mapSize.width = 512;
+            headlight.shadow.mapSize.height = 512;
 
-            const bulbGeo = new THREE.SphereGeometry(0.08, 8, 8);
+            const bulbGeo = new THREE.SphereGeometry(0.08 * p.trainScale, 8, 8);
             const bulbMat = new THREE.MeshBasicMaterial({ 
                 color: p.headlightColor,
                 transparent: true,
@@ -305,7 +308,7 @@ class TrackBuilder {
             const bulb = new THREE.Mesh(bulbGeo, bulbMat);
             bulb.position.copy(headlight.position);
 
-            const glowGeo = new THREE.SphereGeometry(0.15, 8, 8);
+            const glowGeo = new THREE.SphereGeometry(0.15 * p.trainScale, 8, 8);
             const glowMat = new THREE.MeshBasicMaterial({
                 color: p.headlightColor,
                 transparent: true,
@@ -314,16 +317,15 @@ class TrackBuilder {
             const glow = new THREE.Mesh(glowGeo, glowMat);
             glow.position.copy(headlight.position);
 
-            this.trainGroup.add(headlight);
-            this.trainGroup.add(headlight.target);
-            this.trainGroup.add(bulb);
-            this.trainGroup.add(glow);
+            this.trainModel.add(headlight);
+            this.trainModel.add(headlight.target);
+            this.trainModel.add(bulb);
+            this.trainModel.add(glow);
 
             this.headlights.push({
                 light: headlight,
                 bulb: bulb,
-                glow: glow,
-                xOffset: (i === 0 ? -0.5 : 0.5)
+                glow: glow
             });
         }
 
@@ -337,27 +339,9 @@ class TrackBuilder {
         const targetIntensity = this.headlightOn ? p.headlightIntensity : 0;
 
         this.headlights.forEach((hl) => {
-            const lightX = hl.xOffset * p.trainScale * 0.35;
-            const lightY = 0.22 * p.trainScale;
-            const lightZ = 1.7 * p.trainScale;
-
-            hl.light.position.set(lightX, lightY, lightZ);
-
-            const lookDir = new THREE.Vector3(0, -0.15, 1);
-            hl.light.target.position.set(
-                lightX + lookDir.x * p.headlightDistance,
-                lightY + lookDir.y * p.headlightDistance,
-                lightZ + lookDir.z * p.headlightDistance
-            );
-            hl.light.target.updateMatrixWorld();
-
             hl.light.intensity = targetIntensity;
-
             hl.bulb.material.opacity = this.headlightOn ? 1 : 0;
-            hl.bulb.position.copy(hl.light.position);
-
             hl.glow.material.opacity = this.headlightOn ? 0.5 : 0;
-            hl.glow.position.copy(hl.light.position);
         });
     }
 
@@ -409,14 +393,6 @@ class TrackBuilder {
             }
 
             this.trainGroup.position.z = this.currentZ;
-
-            // 更新车灯位置和强度
-            this._updateHeadlights();
-        }
-
-        // 即使火车模型未加载，也更新车灯（如果已创建）
-        if (!this.modelLoaded && this.headlights.length > 0) {
-            this._updateHeadlights();
         }
 
         this.controls.update();
