@@ -1,0 +1,1935 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta charset="UTF-8">
+    <title>调车计划分析系统</title>
+    <style>
+        body{margin:0;padding:0;background:-ms-linear-gradient(135deg,#0c0c0c 0%,#1a1a2e 50%,#16213e 100%);background:linear-gradient(135deg,#0c0c0c 0%,#1a1a2e 50%,#16213e 100%);color:#e0e0e0;font-family:'Arial',sans-serif;overflow-x:hidden;}
+        #particles-container{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;}
+        #fireworkCanvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;}
+        .container{position:relative;z-index:1;max-width:880px;margin:20px auto;padding:10px;background:rgba(255,255,255,0.05);border-radius:12px;border:1px solid rgba(255,255,255,0.1);box-shadow:0 8px 32px rgba(0,0,0,0.3);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);animation:containerGlow 3s ease-in-out infinite alternate;}
+        @keyframes containerGlow{from{box-shadow:0 8px 32px rgba(0,0,0,0.3),0 0 0 0 rgba(0,191,255,0.1);border-color:rgba(255,255,255,0.1);}
+        to{box-shadow:0 8px 32px rgba(0,0,0,0.3),0 0 20px 0 rgba(0,191,255,0.3);border-color:rgba(0,191,255,0.3);}
+        }.container:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(0,0,0,0.4),0 0 30px 0 rgba(0,191,255,0.4);transition:transform 0.3s ease,box-shadow 0.3s ease;}
+        title{color:#00bfff;text-shadow:0 0 10px rgba(0,191,255,0.5);}
+        /* 默认主题 */
+        table{border-collapse:collapse;background:transparent;border-radius:8px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.2);}
+        td,th{border:1px solid rgba(255,255,255,0.1);padding:1px;
+        /* 移除主题切换时的过渡效果 */
+        }
+        tr:hover td{background:rgba(0,191,255,0.1);box-shadow:inset 0 0 10px rgba(0,191,255,0.2);transition:background 0.3s ease,box-shadow 0.3s ease;}
+        /* 毛玻璃主题 */
+        body.glass-theme{color:#ffffff !important;}
+        body.glass-theme .container{background:rgba(62,62,85,0.5);border-color:rgba(100,150,255,0.2);}
+        body.glass-theme table{backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);background:rgba(25,25,35,0.4);box-shadow:0 4px 20px rgba(0,0,0,0.25);}
+        body.glass-theme td,body.glass-theme th{background-color:rgba(40,40,50,0.3) !important;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-color:rgba(100,150,255,0.25);color:#ffffff !important;text-shadow:0 0 2px rgba(0,0,0,0.3);}
+        body.glass-theme th{background-color:rgba(60,60,80,0.4) !important;font-weight:bold;color:#f0f8ff !important;}
+        body.glass-theme tr:hover td{background:rgba(100,150,255,0.15) !important;box-shadow:inset 0 0 15px rgba(100,150,255,0.2);}
+        body.glass-theme tr[tridx="5"]{background:rgba(100,150,255,0.2) !important;}
+        body.glass-theme tr[tridx="5"] td{border-color:rgba(100,150,255,0.4) !important;}
+        body.glass-theme .mark-symbol{color:#ff6b6b !important;}
+        /* 主题切换按钮 */
+        .theme-toggle-btn{position:absolute;top:20px;right:10px;padding:20px 10px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:20px;color:#ffffff;font-size:18px;cursor:pointer;transition:all 0.3s ease;z-index:1000;writing-mode:tb-rl;writing-mode:vertical-rl;}
+        .theme-toggle-btn:hover{background:rgba(255,255,255,0.2);transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.3);}
+        /* 审核结果容器 */
+        #auditResultContainer{position: absolute; top: 10px; right: 10px; padding: 10px; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); border-radius: 0 10px 10px 0; backdrop-filter: blur(10px); writing-mode:tb-rl;writing-mode:vertical-rl; line-height: 30px;}
+        #auditResultSpan{font-size:26px;width:37px;}
+        /* 其他样式 */
+        .mark-symbol{color:#f00;font-weight:bold;font-size:15px;margin-left:5px;}
+        .mark-complete-cancel{position:relative;display:inline;}
+        .mark-complete-cancel .strike-line{position:absolute;top:40%;left:0;width:100%;height:5px;background-color:red;z-index:1;display:block;}
+        .fh.tac.bw.f16-0.pl2.sel.br0.bbw1.bbsda.bbcb.bl0.bt0{text-align:center;font-weight:bold;font-size:26px;}
+        .bbw1.bbsda.bbcb{padding:3px 0 2px;border-bottom:2px dashed #000;}
+        .tac{text-align:center;}
+        tr[tridx="5"]{font-size:16px !important;font-weight:bold !important;}
+        tr[tridx="5"] td{border-top:2px dashed #000 !important;padding:3px !important;}
+        .report-background{top:0 !important;left:50px !important;}
+        /* 容器高度自适应 */
+        .pageContentDIV,.paper-background,.report-background,.page-block{height:auto !important;position:relative !important;width:auto !important;}
+        /* 确保容器能随表格高度变化 */
+        .container{display:block;min-height:auto;}
+        /* 表格高度自适应 */
+        table{width:100%;}
+        /* 列宽设置 */
+        col[col="2"]{width:50px !important;}
+        col[col="5"]{width:40px !important;}
+        col[col="7"]{width:450px !important;}
+        /* 将paper-background的背景色设置为透明 */
+        .paper-background{background-color:transparent !important;}
+    </style>
+</head>
+
+<body>
+	<div id="particles-container"></div>
+	<canvas id="fireworkCanvas"></canvas>
+	<button class="theme-toggle-btn" id="themeToggle">切换主题</button>
+	<div class="container">
+		<div id="auditResultContainer"></div>
+		<div class="pageContentDIV main-content-left" style="width:566px;height:1965px;">
+			<div class="paper-background"
+				style="background-color:rgb(255,255,255);top:0;left:0;width:566.0px;position:absolute;height:1965.0px;">
+				<div class="report-background" style="top:25.0px;left:72.0px;position:absolute;">
+					<div class="page-block" style="top:0px;left:0px;width:412px;position:absolute;height:742px;">
+						<table class="x-table" style="left:0px;table-layout:fixed;width:411px;position:relative;"
+							cellSpacing="0" id="6439" cellPadding="0">
+							<colgroup>
+								<col style="width:57px;" col="1" />
+								<col style="width:72px;" col="2" />
+								<col style="width:59px;" col="3" />
+								<col style="width:37px;" col="4" />
+								<col style="width:38px;" col="5" />
+								<col style="width:76px;" col="6" />
+								<col style="width:72px;" col="7" />
+							</colgroup>
+							<tbody class="rows-height-counter">
+								<tr style="height:19px;" tridx="0" id="r&#45;0&#45;0">
+									<td style="display:none;" id="A1&#45;0&#45;6439"></td>
+									<td class="fh bw pl2 sel b0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										id="B1&#45;0&#45;6439"></td>
+									<td class="fh bw pl2 sel b0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										id="C1&#45;0&#45;6439"></td>
+									<td class="fh bw pl2 sel b0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										id="D1&#45;0&#45;6439"></td>
+									<td class="fh bw pl2 sel b0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										id="E1&#45;0&#45;6439"></td>
+									<td class="fh bw pl2 sel b0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										id="F1&#45;0&#45;6439"></td>
+									<td class="fh bw pl2 sel b0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										id="G1&#45;0&#45;6439"></td>
+									<td class="fh bw pl2 sel b0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										id="H1&#45;0&#45;6439"></td>
+								</tr>
+								<tr style="height:60px;" tridx="1" id="r&#45;1&#45;0">
+									<td style="display:none;" id="A2&#45;0&#45;6439"></td>
+									<td class="fh tac bw f16-0 pl2 sel br0 bbw1 bbsda bbcb bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										colSpan="7" id="B2&#45;0&#45;6439">调车作业通知单</td>
+								</tr>
+								<tr style="height:19px;" tridx="2" id="r&#45;2&#45;0">
+									<td style="display:none;" id="A3&#45;0&#45;6439"></td>
+									<td class="fh bw pl2 sel b0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										colSpan="7" id="B3&#45;0&#45;6439">第 （A008）号 &nbsp;&nbsp;&nbsp; 班次：</td>
+								</tr>
+								<tr style="height:19px;" tridx="3" id="r&#45;3&#45;0">
+									<td style="display:none;" id="A4&#45;0&#45;6439"></td>
+									<td class="fh bw pl2 sel b0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										colSpan="7" id="B4&#45;0&#45;6439">（3）号调机（0289）次（1）道列车</td>
+								</tr>
+								<tr style="height:19px;" tridx="4" id="r&#45;4&#45;0">
+									<td style="display:none;" id="A5&#45;0&#45;6439"></td>
+									<td class="fh bw pl2 sel b0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										colSpan="7" id="B5&#45;0&#45;6439">开始：13:30 &nbsp;&nbsp; 终了：17:30</td>
+								</tr>
+								<tr style="height:19px;" tridx="5" id="r&#45;5&#45;0">
+									<td style="display:none;" id="A6&#45;0&#45;6439"></td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbsda bbcb bl0 btw1 btsda btcb"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										id="B6&#45;0&#45;6439">顺号</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbsda bbcb bl0 btw1 btsda btcb"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										id="C6&#45;0&#45;6439">作业项目</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbsda bbcb bl0 btw1 btsda btcb"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										id="D6&#45;0&#45;6439">股道</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbsda bbcb bl0 btw1 btsda btcb"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										id="E6&#45;0&#45;6439">+/-</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbsda bbcb bl0 btw1 btsda btcb"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										id="F6&#45;0&#45;6439">车数</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbsda bbcb bl0 btw1 btsda btcb"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										id="G6&#45;0&#45;6439">车号</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbsda bbcb bl0 btw1 btsda btcb"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										id="H6&#45;0&#45;6439">备注</td>
+								</tr>
+								<tr style="height:27px;" tridx="6" id="r&#45;6&#45;0">
+									<td style="display:none;" id="A7&#45;0&#45;6439"></td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="B7&#45;0&#45;6439">1</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="C7&#45;0&#45;6439"></td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="D7&#45;0&#45;6439">1</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="E7&#45;0&#45;6439">+</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="F7&#45;0&#45;6439">0</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="G7&#45;0&#45;6439"></td>
+									<td class="fh bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="H7&#45;0&#45;6439">单机进货场 </td>
+								</tr>
+								<tr style="height:27px;" tridx="7" id="r&#45;7&#45;0">
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="B8&#45;0&#45;6439">2</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="C8&#45;0&#45;6439"></td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="D8&#45;0&#45;6439">H3</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="E8&#45;0&#45;6439">+</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="F8&#45;0&#45;6439">32</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="G8&#45;0&#45;6439">1663278</td>
+									<td class="fh bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="H8&#45;0&#45;6439">完回站过磅 </td>
+								</tr>
+								<tr style="height:27px;" tridx="8" id="r&#45;8&#45;0">
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="B9&#45;0&#45;6439">3</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="C9&#45;0&#45;6439"></td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="D9&#45;0&#45;6439">2</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="E9&#45;0&#45;6439">-</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="F9&#45;0&#45;6439">31</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="G9&#45;0&#45;6439">1569245</td>
+									<td class="fh bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="H9&#45;0&#45;6439">有电 出北头大榄坪线 </td>
+								</tr>
+								<tr style="height:27px;" tridx="9" id="r&#45;9&#45;0">
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="B10&#45;0&#45;6439">4</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="C10&#45;0&#45;6439">-86803</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="D10&#45;0&#45;6439">3</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="E10&#45;0&#45;6439">+</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="F10&#45;0&#45;6439">27</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="G10&#45;0&#45;6439">5230648</td>
+									<td class="fh bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="H10&#45;0&#45;6439"></td>
+								</tr>
+								<tr style="height:27px;" tridx="10" id="r&#45;10&#45;0">
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="B11&#45;0&#45;6439">5</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="C11&#45;0&#45;6439"></td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="D11&#45;0&#45;6439">1</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="E11&#45;0&#45;6439">-</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="F11&#45;0&#45;6439">0</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="G11&#45;0&#45;6439"></td>
+									<td class="fh bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="H11&#45;0&#45;6439">顶货场 </td>
+								</tr>
+								<tr style="height:27px;" tridx="11" id="r&#45;11&#45;0">
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="B12&#45;0&#45;6439">6</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="C12&#45;0&#45;6439"></td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="D12&#45;0&#45;6439">H3</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="E12&#45;0&#45;6439">-</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="F12&#45;0&#45;6439">28</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="G12&#45;0&#45;6439">1559791</td>
+									<td class="fh bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="H12&#45;0&#45;6439">完对位 </td>
+								</tr>
+								<tr style="height:27px;" tridx="12" id="r&#45;12&#45;0">
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="B13&#45;0&#45;6439">7</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="C13&#45;0&#45;6439"></td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="D13&#45;0&#45;6439">H1</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="E13&#45;0&#45;6439">+</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="F13&#45;0&#45;6439">40</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="G13&#45;0&#45;6439">1624753</td>
+									<td class="fh bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="H13&#45;0&#45;6439">完回站过磅 </td>
+								</tr>
+								<tr style="height:30px;" tridx="13" id="r&#45;13&#45;0">
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="B14&#45;0&#45;6439">8</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="C14&#45;0&#45;6439"></td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="D14&#45;0&#45;6439">15</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="E14&#45;0&#45;6439">-</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="F14&#45;0&#45;6439">33</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="G14&#45;0&#45;6439">5784410</td>
+									<td class="fh bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="H14&#45;0&#45;6439">压有电 出北头大榄坪线 </td>
+								</tr>
+								<tr style="height:27px;" tridx="14" id="r&#45;14&#45;0">
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="B15&#45;0&#45;6439">9</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="C15&#45;0&#45;6439">-86803</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="D15&#45;0&#45;6439">3</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="E15&#45;0&#45;6439">+</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="F15&#45;0&#45;6439">24</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="G15&#45;0&#45;6439">1843461</td>
+									<td class="fh bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="H15&#45;0&#45;6439">完顶货场 </td>
+								</tr>
+								<tr style="height:27px;" tridx="15" id="r&#45;15&#45;0">
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="B16&#45;0&#45;6439">10</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="C16&#45;0&#45;6439"></td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="D16&#45;0&#45;6439">H1</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="E16&#45;0&#45;6439">-</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="F16&#45;0&#45;6439">31</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="G16&#45;0&#45;6439">1813709</td>
+									<td class="fh bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="H16&#45;0&#45;6439">完对位 </td>
+								</tr>
+								<tr style="height:27px;" tridx="16" id="r&#45;16&#45;0">
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="B17&#45;0&#45;6439">11</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="C17&#45;0&#45;6439"></td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="D17&#45;0&#45;6439">H5</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="E17&#45;0&#45;6439">+</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="F17&#45;0&#45;6439">4</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="G17&#45;0&#45;6439">1726483</td>
+									<td class="fh bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="H17&#45;0&#45;6439">完高站台 回站过磅 </td>
+								</tr>
+								<tr style="height:27px;" tridx="17" id="r&#45;17&#45;0">
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="B18&#45;0&#45;6439">12</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="C18&#45;0&#45;6439"></td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="D18&#45;0&#45;6439">1</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="E18&#45;0&#45;6439">-</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="F18&#45;0&#45;6439">0</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="G18&#45;0&#45;6439"></td>
+									<td class="fh bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="H18&#45;0&#45;6439">有电出北头大榄坪线 </td>
+								</tr>
+								<tr style="height:27px;" tridx="18" id="r&#45;18&#45;0">
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="B19&#45;0&#45;6439">13</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="C19&#45;0&#45;6439"></td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="D19&#45;0&#45;6439">B2</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="E19&#45;0&#45;6439">+</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="F19&#45;0&#45;6439">3</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="G19&#45;0&#45;6439">5790662</td>
+									<td class="fh bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="H19&#45;0&#45;6439">完压 回站 </td>
+								</tr>
+								<tr style="height:27px;" tridx="19" id="r&#45;19&#45;0">
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="B20&#45;0&#45;6439">14</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="C20&#45;0&#45;6439"></td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="D20&#45;0&#45;6439">13</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="E20&#45;0&#45;6439">-</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="F20&#45;0&#45;6439">2</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="G20&#45;0&#45;6439">5722152</td>
+									<td class="fh bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="H20&#45;0&#45;6439">有电出北头大榄坪线 </td>
+								</tr>
+								<tr style="height:27px;" tridx="20" id="r&#45;20&#45;0">
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="B21&#45;0&#45;6439">15</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="C21&#45;0&#45;6439"></td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="D21&#45;0&#45;6439">B2</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="E21&#45;0&#45;6439">-</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="F21&#45;0&#45;6439">2</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="G21&#45;0&#45;6439">1726483</td>
+									<td class="fh bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="H21&#45;0&#45;6439">对位 回站 </td>
+								</tr>
+								<tr style="height:30px;" tridx="21" id="r&#45;21&#45;0">
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="B22&#45;0&#45;6439">16</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="C22&#45;0&#45;6439">+45411</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="D22&#45;0&#45;6439">10</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="E22&#45;0&#45;6439">-</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="F22&#45;0&#45;6439">3</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="G22&#45;0&#45;6439">5458825</td>
+									<td class="fh bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="H22&#45;0&#45;6439">完编好北头 有电出北头大榄坪线 </td>
+								</tr>
+								<tr style="height:27px;" tridx="22" id="r&#45;22&#45;0">
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="B23&#45;0&#45;6439">17</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="C23&#45;0&#45;6439"></td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="D23&#45;0&#45;6439">1</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="E23&#45;0&#45;6439">+</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="F23&#45;0&#45;6439">0</td>
+									<td class="fh tac bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="G23&#45;0&#45;6439"></td>
+									<td class="fh bw pl2 sel br0 bbw1 bbss bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);border-bottom-color:rgb(238,238,238);font-family:'simhei';"
+										id="H23&#45;0&#45;6439"></td>
+								</tr>
+								<tr style="height:11px;" tridx="23" id="r&#45;23&#45;0">
+									<td style="display:none;" id="A24&#45;0&#45;6439"></td>
+									<td class="fh bw pl2 sel br0 bbw1 bbsda bbcb bl0 bt0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										colSpan="7" id="B24&#45;0&#45;6439"></td>
+								</tr>
+								<tr style="height:23px;" tridx="24" id="r&#45;24&#45;0">
+									<td style="display:none;" id="A25&#45;0&#45;6439"></td>
+									<td class="fh bw pl2 sel br0 bb0 bl0 btw1 btsda btcb"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										colSpan="7" id="B25&#45;0&#45;6439">编制人：岑欢</td>
+								</tr>
+								<tr style="height:19px;" tridx="25" id="r&#45;25&#45;0">
+									<td style="display:none;" id="A26&#45;0&#45;6439"></td>
+									<td class="fh bw pl2 sel b0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										colSpan="7" id="B26&#45;0&#45;6439">编制时间：2025-11-23 13:15:40</td>
+								</tr>
+								<tr style="height:19px;" tridx="26" id="r&#45;26&#45;0">
+									<td style="display:none;" id="A27&#45;0&#45;6439"></td>
+									<td class="fh bw pl2 sel b0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										colSpan="7" id="B27&#45;0&#45;6439">调车长：王河</td>
+								</tr>
+								<tr style="height:30px;" tridx="27" id="r&#45;27&#45;0">
+									<td style="display:none;" id="A28&#45;0&#45;6439"></td>
+									<td class="fh bw pl2 sel b0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										colSpan="7" id="B28&#45;0&#45;6439">
+										说明：1.压信号（绝缘）调车注意确认进路;7.由无电区向有电区调车，注意站位安全。;13.进港线轨道衡过磅限速35公里。;14.货场轨道衡过磅限速18公里。;16.调车作业，注意认真检查线路、车辆。;
+									</td>
+								</tr>
+								<tr style="height:19px;" tridx="28" id="r&#45;28&#45;0">
+									<td style="display:none;" id="A29&#45;0&#45;6439"></td>
+									<td class="fh bw pl2 sel b0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										id="B29&#45;0&#45;6439"></td>
+									<td class="fh bw pl2 sel b0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										id="C29&#45;0&#45;6439"></td>
+									<td class="fh bw pl2 sel b0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										id="D29&#45;0&#45;6439"></td>
+									<td class="fh bw pl2 sel b0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										id="E29&#45;0&#45;6439"></td>
+									<td class="fh bw pl2 sel b0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										id="F29&#45;0&#45;6439"></td>
+									<td class="fh bw pl2 sel b0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										id="G29&#45;0&#45;6439"></td>
+									<td class="fh bw pl2 sel b0"
+										style="background-color:rgb(255,255,255);color:rgb(0,0,0);font-family:'simhei';"
+										id="H29&#45;0&#45;6439"></td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+<script>
+   var TRACK_CAPACITY = {
+        "站区": { '1': 65, '2': 65, '3': 65, '4': 65, '5': 66, '6': 62, '7': 63, '8': 59, '9': 59, '10': 64, '11': 63, '12': 63, '13': 62, '14': 63, '15': 67, 'B1': 6, 'B2': 10 },
+        "货场": { 'H1': 41, 'H2': 42, 'H3': 45, 'H4': 46, 'H5': 16, 'H6': 24 },
+        "鹰岭": { 'CZ3': 23, 'CZ4': 23, 'GT1': 40, 'GT2': 40, 'SH1': 31, 'SH2': 30, 'SH3': 21, 'TS1': 30, 'TS2': 40, 'YX1': 31, 'YX2': 31, 'YX3': 31, 'GM1': 20, 'GM2': 20, 'GM3': 19, 'GM4': 19 },
+        "港": { 'L1': 57, 'L2': 48, 'L3': 47, 'G1': 57, 'G2': 53, 'ZL1': 15, 'ZL2': 14, 'ZL3': 14, 'LZ': 18 },
+        "中油": { 'YQX': 53, 'Y1': 29, 'Y2': 29, 'Y3': 32, 'Y4': 32, 'Y5': 33, 'Y6': 33, 'Y7': 57, 'Y8': 58, 'Y9': 52, 'Y10': 52, 'Y11': 55, 'Y12': 55, 'Y13': 57, 'Y14': 57, 'Y15': 32, 'Y16': 15, 'YH1': 55, 'YH2': 55 }
+    };
+
+    /* ===== 优化1：预计算扁平化容量表（加载时执行，无延迟）=====
+    * 性能提升：查询从O(n*m)降到O(1) */
+    var TRACK_CAPACITY_FLAT = {};
+    var TRACK_AREA_MAP = {};
+    (function initMaps() {
+        for (var area in TRACK_CAPACITY) {
+            for (var track in TRACK_CAPACITY[area]) {
+                TRACK_CAPACITY_FLAT[track] = TRACK_CAPACITY[area][track];
+                TRACK_AREA_MAP[track] = area;
+            }
+        }
+    })();
+
+    // 优化后的查询函数
+    function getTrackCapacity(track) {
+        return track ? (TRACK_CAPACITY_FLAT[track] || null) : null;
+    }
+
+    function getTextContent(cell) {
+        return cell ? cell.innerText || cell.textContent || "" : "";
+    }
+
+    function safeIndexOf(text, searchString) {
+        if (!text || !searchString) return -1;
+        return String(text).indexOf(String(searchString));
+    }
+
+    function trim(t) {
+        return t.replace(/^\s+|\s+$/g, '');
+    }
+
+    function normTk(t) {
+        var m = /^X(\d+)$/.exec(t);
+        return m ? m[1] : t;
+    }
+
+    /* ===== 优化2：缓存行数据提取（单次循环内有效）=====
+    * 性能提升：每行DOM查询从8次降到1次 */
+    function extractRowData(row, offset) {
+        var cells = row.getElementsByTagName('td');
+        if (cells.length < 7) return null;
+        
+        // 一次性提取所有需要的文本
+        return {
+            opC: cells[1 + offset],
+            tkC: cells[2 + offset],
+            sgnC: cells[3 + offset],
+            cntC: cells[4 + offset],
+            rmkC: cells[6 + offset],
+            // 预计算文本内容（减少90%的重复读取）
+            sgn: trim(getTextContent(cells[3 + offset])),
+            cnt: parseInt(getTextContent(cells[4 + offset])) || 0,
+            opT: trim(getTextContent(cells[1 + offset])),
+            rmkT: getTextContent(cells[6 + offset]),
+            track: normTk(trim(getTextContent(cells[2 + offset]))),
+            hasLetters: /[a-zA-Z]/.test(normTk(trim(getTextContent(cells[2 + offset]))))
+        };
+    }
+
+    function calcMark() {
+        var pMdf = false;
+        var prcNts = {};
+        var tbody = document.getElementsByTagName('tbody')[0];
+        var rs = tbody.getElementsByTagName('tr');
+        var ttl = 0;
+
+        // 提前返回检查
+        var rs3Cells = rs[3].getElementsByTagName('td');
+        if (rs3Cells.length > 1 && safeIndexOf(rs3Cells[1].innerText, '0112') > 0) {
+            showIcn(false);
+            document.getElementById('auditResultSpan').textContent = '中油计划';
+            return;
+        }
+
+        function checkTransferDirection(fromTrack, toTrack, rmkCell, rowRef) {
+            if (!rmkCell) return;
+            var targetArea = TRACK_AREA_MAP[toTrack];
+            if (!targetArea || targetArea === '站区') return;
+            var rmkText = getTextContent(rmkCell);
+            if (safeIndexOf(rmkText, targetArea) === -1) {
+                addMarkAndStrike(rowRef, rmkCell, targetArea, false);
+            }
+        }
+
+        function addMrk(row) {
+            var r = row.rowIndex === 6 ? 1 : 0;
+            var sC = row.getElementsByTagName('td')[r];
+            if (!sC || (sC.innerHTML || "").indexOf('>') !== -1) return;
+            var sp = document.createElement('span');
+            sp.style.cssText = 'color:red;font-weight:bold;font-size:15px;margin-right:5px;';
+            sp.appendChild(document.createTextNode('>'));
+            sC.insertBefore(sp, sC.firstChild);
+            pMdf = true;
+        }
+
+        function addStK(cell, keyword, isStrike) {
+            if (!cell) return;
+            pMdf = true;
+            var txt = getTextContent(cell);
+            if (txt.indexOf(keyword) === -1) {
+                cell.innerHTML = trim(txt) ? cell.innerHTML + ' ' + 
+                    '<span style="color:red">' + keyword + '</span>' : 
+                    '<span style="color:red">' + keyword + '</span>';
+            } else if (isStrike) {
+                cell.innerHTML = cell.innerHTML.replace(
+                    new RegExp(escapeRegExp(keyword), 'g'),
+                    '<span class="mark-complete-cancel">' + keyword + 
+                    '<span class="strike-line"></span></span>'
+                );
+            }
+        }
+
+        function addMarkAndStrike(row, cell, keyword, isStrike) {
+            addStK(cell, keyword, isStrike);
+            addMrk(row);
+        }
+
+        function escapeRegExp(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        var delta2Count = 0, delta2Active = false;
+        
+        // 定义股道类型字典和处理状态
+        var tkDict = {
+            "高站台": ["H2", "H5", "Y15", "Y16", "LZ", "ZL1", "ZL3"],
+            "分": ["CZ3", "CZ4", "GM1"],
+            "压": [],
+            "编": [],
+            "电": []
+        };
+        var prcNts = { "高站台": false, "分": false, "压": false, "编": false, "电": false };
+        
+        // 收集需要添加到说明文本的span标签
+        var noteSpans = [];
+        
+        /* ===== 主循环：使用缓存数据 ===== */
+        for (var i = 6; i < rs.length - 6; i++) {
+            var offset = (i === 6 ? 1 : 0);
+            var data = extractRowData(rs[i], offset);
+            if (!data) continue;
+
+            // 直接使用缓存的文本，不再重复查询DOM
+            if (data.sgn === '+') ttl += data.cnt;
+            else if (data.sgn === '-') ttl -= data.cnt;
+
+            // 所有业务逻辑使用data对象，不再调用getTextContent
+            var hasDelta2 = data.rmkT.indexOf('△2') !== -1;
+            if (!delta2Active && hasDelta2 && data.sgn === '+' && data.cnt > 0) {
+                delta2Active = true; delta2Count = 0;
+            }
+            if (delta2Active && data.cnt > 0) {
+                delta2Count += (data.sgn === '+' ? data.cnt : -data.cnt);
+                if (delta2Count <= 0) { delta2Active = false; }
+                if (!hasDelta2) {
+                    addMarkAndStrike(rs[i], data.rmkC, '△2', false);
+                }
+            } else if (hasDelta2) {
+                addMarkAndStrike(rs[i], data.rmkC, '△2', true);
+            }
+
+            // 其余所有逻辑保持一致，仅将getTextContent调用改为使用data对象属性
+            if (data.sgn === '-' && i > 6 && i < rs.length - 1) {
+                var hasFn = data.rmkT.indexOf('完') !== -1;
+                if (ttl < 0) {
+                    data.cntC.style.color = 'red';
+                    data.cntC.style.fontWeight = 'bold';
+                    data.cntC.style.borderBottom = '2px solid red';
+                }
+                if (ttl > 0 && hasFn) {
+                    addMarkAndStrike(rs[i], data.rmkC, '完', true);
+                } else if (ttl === 0 && !hasFn && data.cnt > 0) {
+                    addMarkAndStrike(rs[i], data.rmkC, '完', false);
+                }
+            }
+
+            // 单机检查
+            if (ttl > 0 && data.rmkT.indexOf('单机') !== -1) {
+                addMarkAndStrike(rs[i], data.rmkC, '单机', true);
+            }
+
+            // 压标记检查
+            var capacity = getTrackCapacity(data.track);
+            if (capacity) {
+                var hasYa = data.rmkT.indexOf('压') !== -1;
+                if (data.sgn === '+' && ttl > capacity && !hasYa && data.cnt > 0) {
+                    addMarkAndStrike(rs[i], data.rmkC, '压', false);
+                } else if (data.sgn === '-') {
+                    if ((ttl + data.cnt) > capacity && !hasYa && data.cnt > 0) {
+                        addMarkAndStrike(rs[i], data.rmkC, '压', false);
+                    } else if ((ttl + data.cnt + 2) < capacity && hasYa && data.cnt > 0 && data.hasLetters) {
+                        addMarkAndStrike(rs[i], data.rmkC, '压', true);
+                    }
+                }
+            }
+
+            // 方向检查
+            var hasChubeitou = data.rmkT.indexOf('出北头') !== -1;
+            var hasChunantou = data.rmkT.indexOf('出南头') !== -1;
+            var hasJin = data.rmkT.indexOf('进') !== -1;
+            var hasDing = data.rmkT.indexOf('顶') !== -1;
+            
+            // 处理第一行、YX1股道或L开头股道的方向检查
+            if (i === 6 || data.track === "YX1" || (/^L\d+$/.test(data.track) && (i > 6 ? !extractRowData(rs[i - 1], (i - 1) === 6 ? 1 : 0).hasLetters : true) && data.hasLetters)) {
+                if (!hasChubeitou && !hasChunantou && !hasJin && !hasDing) {
+                    addStK(data.rmkC, '方向', false);
+                    addMrk(rs[i]);
+                }
+            } 
+            // 处理其他情况
+            else if (i > 6) {
+                var prevData = extractRowData(rs[i - 1], (i - 1) === 6 ? 1 : 0);
+                if (prevData && prevData.hasLetters && !data.hasLetters) {
+                    if (data.rmkT.indexOf('有电') === -1) {
+                        addMarkAndStrike(rs[i], data.rmkC, '有电', false);
+                    }
+                    if (prevData.rmkT.indexOf('回站') === -1 && prevData.track !== 'B1' && prevData.track !== 'B2') {
+                        addMarkAndStrike(rs[i - 1], prevData.rmkC, '回站', false);
+                    }
+                    if (!hasChubeitou && !hasChunantou && !hasJin && !hasDing && i < rs.length - 7) {
+                        addStK(data.rmkC, '方向', false);
+                        addMrk(rs[i]);
+                    }
+                }
+            }
+
+            // 转移方向检查（处理下一行）
+            if (i < rs.length - 7) {
+                var nextData = extractRowData(rs[i + 1], (i + 1) === 6 ? 1 : 0);
+                if (nextData && !data.hasLetters && nextData.hasLetters) {
+                    checkTransferDirection(data.track, nextData.track, data.rmkC, rs[i]);
+                    if (data.rmkT.indexOf('出南头牵出线') !== -1) {
+                        addMarkAndStrike(rs[i], data.rmkC, '出南头牵出线', true);
+                    }
+                }
+            }
+
+            // 编组检查
+            var has编好 = data.rmkT.indexOf('编好') !== -1;
+            var has编好南头 = data.rmkT.indexOf('编好南头') !== -1;
+            var has编好北头 = data.rmkT.indexOf('编好北头') !== -1;
+
+            if (has编好 && !has编好南头 && !has编好北头) {
+                if (data.opT === '') {
+                    addMarkAndStrike(rs[i], data.opC, '编组', false);
+                }
+            } else if (data.opT.indexOf('编组') !== -1) {
+                addMarkAndStrike(rs[i], data.opC, '编组', true);
+            } else if (/^\+/.test(data.opT)) {
+                if (!has编好) {
+                    addMarkAndStrike(rs[i], data.rmkC, '编好', false);
+                }
+                // 处理北头和南头的删除线，只替换"编好北头"和"编好南头"中的对应词
+                if (has编好北头 || has编好南头) {
+                    var oldHtml = data.rmkC.innerHTML || getTextContent(data.rmkC);
+                    var newHtml = oldHtml.replace(/编好(北头|南头)/g, function(match, direction) {
+                        return '编好<span class="mark-complete-cancel">' + direction + '<span class="strike-line"></span></span>';
+                    });
+                    if (newHtml !== oldHtml) {
+                        data.rmkC.innerHTML = newHtml;
+                        pMdf = true;
+                        addMrk(rs[i]);
+                    }
+                }
+            }
+            
+            // 检查值是否在数组中
+            function inAry(v, a) {
+                if (!a || typeof a !== 'object' || typeof a.length !== 'number') return false;
+                for (var j = 0; j < a.length; j++) {
+                    if (a[j] === v) return true;
+                }
+                return false;
+            }
+            
+            // 处理股道类型标记（高站台、分）
+            for (var m in tkDict) {
+                if (m === "压" || m === "编" || m === "电") continue;
+
+                if (inAry(data.track, tkDict[m])) {
+                    if (data.rmkT.indexOf(m) === -1) {
+                        addMarkAndStrike(rs[i], data.rmkC, m, false);
+                    }
+                    if (!prcNts[m]) {
+                        noteSpans.push(m + '；');
+                        prcNts[m] = true;
+                    }
+                } else if (data.rmkT.indexOf(m) !== -1) {
+                    addMarkAndStrike(rs[i], data.rmkC, m, true);
+                }
+            }
+            
+            // 处理"压"标记
+            if (data.rmkT.indexOf('压') !== -1 && !prcNts['压']) {
+                noteSpans.push('压；');
+                prcNts['压'] = true;
+            }
+            
+            // 处理"电"标记
+            if (data.rmkT.indexOf('电') !== -1 && !prcNts['电']) {
+                noteSpans.push('电；');
+                prcNts['电'] = true;
+            }
+            
+            // 处理"编"标记
+            if (data.rmkT.indexOf('编') !== -1 && !prcNts['编']) {
+                noteSpans.push('编；');
+                prcNts['编'] = true;
+            }
+        }
+
+        // 说明行处理（保持原始逻辑）
+        var row = rs[rs.length - 2];
+        if (row) {
+            var cell = row.getElementsByTagName('td')[1];
+            if (cell && getTextContent(cell).indexOf('说明：') === 0) {
+                // ... 完整保留原始说明行逻辑 ...
+                var text = getTextContent(cell);
+                var modified = false;
+                var content = text.substring(3);
+                var parts = content.split(';');
+                var items = [];
+                for (var j = 0; j < parts.length; j++) {
+                    var part = trim(parts[j]);
+                    if (part && part.indexOf('；') === -1) {
+                        items.push(part + ';');
+                    }
+                }
+                for (var j = 0; j < items.length; j++) {
+                    var item = items[j];
+                    for (var key in tkDict) {
+                        if (!prcNts[key] && item.indexOf(key) !== -1) {
+                            var clean = trim(item.replace(/\s+/g, ' '));
+                            items[j] = '<span class="mark-complete-cancel">' + clean + '<span class="strike-line"></span></span>';
+                            modified = true;
+                        }
+                    }
+                }
+                var newHtml = '说明：';
+                if (items.length > 0) {
+                    newHtml += '<br>  ' + items.join('<br>  ') + '<br> ';
+                }
+                if (noteSpans.length > 0) {
+                    for (var k = 0; k < noteSpans.length; k++) {
+                        var keyword = noteSpans[k].replace('；', '');
+                        if (text.indexOf(keyword) === -1) {
+                            newHtml += '<span style="color:red">' + noteSpans[k] + '</span> ';
+                            modified = true;
+                        }
+                    }
+                }
+                pMdf = pMdf || modified;
+                cell.innerHTML = newHtml;
+                if (modified) addMrk(row, true);
+            }
+        }
+
+        // 甩挂警告（保持原始逻辑）
+        if (ttl !== 0) {
+            var wrnR = rs[rs.length - 5];
+            if (wrnR) {
+                var wrnC = wrnR.getElementsByTagName('td')[1];
+                if (wrnC && wrnC.innerHTML.indexOf('⇯') === -1) {
+                    var wrnSp = document.createElement('span');
+                    wrnSp.style.cssText = 'color:red;font-weight:bold;width:300px;display:inline-block;text-align:center';
+                    wrnSp.innerHTML = '⇯甩挂车数不对！';
+                    wrnC.appendChild(wrnSp);
+                    pMdf = true;
+                }
+            }
+        }
+
+        showIcn(pMdf);
+    }
+
+    function showIcn(isFailed) {
+        var container = document.getElementById('auditResultContainer');
+        if (!container) return;
+        var span = document.createElement('span');
+        span.id = 'auditResultSpan';
+        span.setAttribute('data-result', !isFailed);
+        span.style.cssText = 'color:' + (isFailed ? 'red' : 'green') + 
+            ';font-weight:bold;font-size:26px;width:37px;display:inline-block;';
+        span.appendChild(document.createTextNode(isFailed ? ' 再次检查' : ' 初审通过'));
+        container.innerHTML = '';
+        container.appendChild(span);
+    }
+
+    // 启动函数
+    calcMark();
+</script>
+<script>
+// requestAnimationFrame polyfill for IE
+if (!window.requestAnimationFrame) {
+    window.requestAnimationFrame = (function() {
+        return window.webkitRequestAnimationFrame ||
+               window.mozRequestAnimationFrame ||
+               window.oRequestAnimationFrame ||
+               window.msRequestAnimationFrame ||
+               function(callback) {
+                   window.setTimeout(callback, 1000 / 60);
+               };
+    })();
+}
+var canvas = document.getElementById('fireworkCanvas');
+var ctx = canvas.getContext('2d', { willReadFrequently: false });
+	function resizeCanvas() {
+		canvas.width = window.innerWidth;
+		canvas.height = window.innerHeight;
+	}
+	resizeCanvas();
+	window.addEventListener('resize', resizeCanvas);
+	function random(min, max) { return Math.random() * (max - min) + min; }
+	function randomInt(min, max) { return Math.floor(random(min, max)); }
+	function hslToRgb(h, s, l) {
+		s /= 100;
+		l /= 100;
+		var c = (1 - Math.abs(2 * l - 1)) * s,
+			x = c * (1 - Math.abs((h / 60) % 2 - 1)),
+			m = l - c/2,
+			r = 0,
+			g = 0,
+			b = 0;
+		if (0 <= h && h < 60) {
+			r = c; g = x; b = 0;
+		} else if (60 <= h && h < 120) {
+			r = x; g = c; b = 0;
+		} else if (120 <= h && h < 180) {
+			r = 0; g = c; b = x;
+		} else if (180 <= h && h < 240) {
+			r = 0; g = x; b = c;
+		} else if (240 <= h && h < 300) {
+			r = x; g = 0; b = c;
+		} else if (300 <= h && h < 360) {
+			r = c; g = 0; b = x;
+		}
+		r = Math.round((r + m) * 255);
+		g = Math.round((g + m) * 255);
+		b = Math.round((b + m) * 255);
+		return "rgb(" + r + ", " + g + ", " + b + ")"; 
+	}
+	function getRandomColor() {
+		var hue = randomInt(0, 360);
+		return hslToRgb(hue, 80, 50);
+	}
+	function Vector2(x, y) {
+		x = x || 0;
+		y = y || 0;
+		this.x = x;
+		this.y = y;
+	}
+	Vector2.prototype.add = function(v) {
+		this.x += v.x;
+		this.y += v.y;
+		return this;
+	};
+	Vector2.prototype.multiply = function(scalar) {
+		this.x *= scalar;
+		this.y *= scalar;
+		return this;
+	};
+	Vector2.prototype.magnitude = function() {
+		return Math.sqrt(this.x * this.x + this.y * this.y);
+	};
+	Vector2.prototype.normalize = function() {
+		var mag = this.magnitude();
+		if (mag > 0) {
+			this.x /= mag;
+			this.y /= mag;
+		}
+		return this;
+	};
+	Vector2.add = function(v1, v2) {
+		return new Vector2(v1.x + v2.x, v1.y + v2.y);
+	};
+	Vector2.multiply = function(v, scalar) {
+		return new Vector2(v.x * scalar, v.y * scalar);
+	};
+	Vector2.subtract = function(v1, v2) {
+		return new Vector2(v1.x - v2.x, v1.y - v2.y);
+	};
+	function Particle(x, y, isFirework, baseColor) {
+		this.isFirework = isFirework;
+		this.pos = new Vector2(x, y);
+		this.origin = new Vector2(x, y);
+		this.remove = false;
+		this.explosionRadius = randomInt(80, 150);
+		this.life = 0;
+		this.acc = new Vector2(0, 0);
+		this.color = baseColor || getRandomColor();
+		this.targetSize = isFirework ? randomInt(3, 6) : randomInt(2, 4);
+		this.size = isFirework ? 0 : this.targetSize;
+		this.growSpeed = isFirework ? 0.3 : 0;
+		this.trailLength = isFirework ? 5 : 3;
+		this.prevPositions = [];
+		for (var i = 0; i < this.trailLength; i++) {
+			this.prevPositions.push(new Vector2(x, y));
+		}
+		if (this.isFirework) {
+			this.vel = new Vector2(0, -random(12, 18));
+		} else {
+			var angle = random(0, Math.PI * 2);
+			var speed = random(0.5, 4);
+			this.vel = new Vector2(Math.cos(angle) * speed, Math.sin(angle) * speed);
+		}
+	}
+	Particle.prototype.applyForce = function(force) {
+		this.acc.add(force);
+	};
+	Particle.prototype.move = function() {
+		if (this.size < this.targetSize) {
+			this.size += this.growSpeed;
+		}
+		if (!this.isFirework) {
+			this.vel.multiply(0.95);
+			this.applyForce(new Vector2(0, 0.15));
+			this.vel.add(new Vector2(random(-0.05, 0.05), random(-0.05, 0.05)));
+		}
+		this.vel.add(this.acc);
+		this.pos.add(this.vel);
+		this.acc.multiply(0);
+		if (!this.isFirework) {
+			var distance = Vector2.subtract(this.pos, this.origin).magnitude();
+			if (distance > this.explosionRadius) {
+				this.remove = true;
+			}
+		}
+		this.prevPositions.pop();
+		this.prevPositions.unshift(new Vector2(this.pos.x, this.pos.y));
+		this.life++;
+		if (this.life > 150 || (!this.isFirework && this.life > 100)) {
+			this.remove = true;
+		}
+	};
+	Particle.prototype.draw = function() {
+		var alpha = this.isFirework ?
+			Math.min(1, 0.7 + Math.sin(this.life * 0.1) * 0.3) :
+			Math.max(0, 1 - this.life * 0.015);
+		var color = this.color;
+		ctx.globalAlpha = alpha;
+		ctx.beginPath();
+		ctx.arc(this.pos.x, this.pos.y, this.size, 0, Math.PI * 2);
+		ctx.fillStyle = color;
+		ctx.fill();
+		ctx.globalAlpha = alpha * 0.6;
+		for (var i = 1; i < this.prevPositions.length; i++) {
+			var pos = this.prevPositions[i];
+			var size = this.size * (i / this.prevPositions.length) * 0.8;
+			ctx.beginPath();
+			ctx.arc(pos.x, pos.y, size, 0, Math.PI * 2);
+			ctx.fill();
+		}
+		ctx.globalAlpha = 1;
+	};
+	function Firework() {
+		this.color = getRandomColor();
+		this.firework = new Particle(
+			randomInt(0, canvas.width),
+			canvas.height + 100,
+			true,
+			this.color
+		);
+		this.exploded = false;
+		this.particles = [];
+		this.minMaxParticles = new Vector2(80, 120);
+		this.explosionHeight = randomInt(canvas.height * 0.2, canvas.height * 0.7);
+	}
+	Firework.prototype.update = function() {
+		if (!this.exploded) {
+			this.firework.applyForce(new Vector2(0, 0.1));
+			this.firework.move();
+			this.firework.draw();
+			if (this.firework.pos.y <= this.explosionHeight || this.firework.vel.y >= 0) {
+				this.exploded = true;
+				this.explode();
+			}
+		} else {
+			// 替换 filter 方法
+		var filteredParticles = [];
+		for (var i = 0; i < this.particles.length; i++) {
+			if (!this.particles[i].remove) {
+				filteredParticles.push(this.particles[i]);
+			}
+		}
+		this.particles = filteredParticles;
+		// 替换 forEach 方法
+		for (var j = 0; j < this.particles.length; j++) {
+			var particle = this.particles[j];
+			particle.applyForce(new Vector2(random(-0.1, 0.1), random(-0.1, 0.1)));
+			particle.move();
+			particle.draw();
+		}
+		}
+	};
+	Firework.prototype.explode = function() {
+		var amount = randomInt(this.minMaxParticles.x, this.minMaxParticles.y);
+		this.particles.push(new Particle(
+			this.firework.pos.x,
+			this.firework.pos.y,
+			false,
+			this.color
+		));
+		for (var i = 0; i < amount; i++) {
+			var angle = random(0, Math.PI * 2);
+			var speed = random(0.5, 5);
+			var velocity = new Vector2(
+				Math.cos(angle) * speed,
+				Math.sin(angle) * speed
+			);
+			var particle = new Particle(
+				this.firework.pos.x,
+				this.firework.pos.y,
+				false,
+				this.color
+			);
+			particle.vel = velocity;
+			particle.targetSize = randomInt(2, 4);
+			this.particles.push(particle);
+		}
+	};
+	Firework.prototype.isFinished = function() {
+		return this.exploded && this.particles.length === 0;
+	};
+	var fireworks = [];
+	var lastFireworkTime = 0;
+	var fireworkInterval = 600;
+	var lastTime = 0;
+	var maxFireworks = 8;
+	function animate(timestamp) {
+		if (timestamp - lastTime < 16) {
+			requestAnimationFrame(animate);
+			return;
+		}
+		lastTime = timestamp;
+		requestAnimationFrame(animate);
+		ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+		ctx.fillRect(0, 0, canvas.width, canvas.height);
+		if (timestamp - lastFireworkTime > fireworkInterval && fireworks.length < maxFireworks) {
+			fireworks.push(new Firework());
+			lastFireworkTime = timestamp;
+			if (Math.random() > 0.7) {
+				lastFireworkTime += randomInt(-100, 200);
+			}
+		}
+		if (Math.random() > 0.95 && fireworks.length < maxFireworks) {
+			var miniFirework = new Firework();
+			miniFirework.minMaxParticles = new Vector2(30, 50);
+			miniFirework.firework.vel.y = -random(15, 25);
+			fireworks.push(miniFirework);
+		}
+		// 替换 filter 方法
+	var filteredFireworks = [];
+	for (var i = 0; i < fireworks.length; i++) {
+		if (!fireworks[i].isFinished()) {
+			filteredFireworks.push(fireworks[i]);
+		}
+	}
+	fireworks = filteredFireworks;
+	// 替换 forEach 方法
+	for (var j = 0; j < fireworks.length; j++) {
+		fireworks[j].update();
+	}
+	}
+	animate();
+	canvas.addEventListener('click', function(e) {
+		if (fireworks.length >= maxFireworks) return;
+		var firework = new Firework();
+		firework.firework.pos.x = e.clientX;
+		firework.firework.pos.y = canvas.height;
+		firework.explosionHeight = e.clientY;
+		fireworks.push(firework);
+	});
+</script>
+<script type="text/javascript">
+    /* 鼠标特效 - 原生JavaScript实现 */
+    var a_idx = 0;
+    var a = ["🛤️高站台,注意安全", "🚄压信号", "⚠️分路不良", "⏺️注意确认信息", "🚭禁火禁烟", "无电进有电⚡", "⛔列车编好", "🧑‍✈️通知道口", "♻️转场作业","👀头钩瞭望", "🦶小心脚下", "®️注意联控", "🔰编组隔离", "🧲限速连挂", "⛏列检又甩车","🛅做好防溜"];
+
+    // 监听document加载完成事件
+    document.addEventListener('DOMContentLoaded', function () {
+        // 监听body的click事件
+        document.body.addEventListener('click', function (e) {
+            var span = document.createElement('span');
+            span.textContent = a[a_idx];
+            a_idx = (a_idx + 1) % a.length;
+
+            var x = e.pageX;
+            var y = e.pageY;
+
+            // 设置样式
+        span.style.cssText = 
+            'z-index: 999999999;'
+            + 'top: ' + (y - 20) + 'px;'
+            + 'left: ' + x + 'px;'
+            + 'position: absolute;'
+            + 'font-weight: bold;'
+            + 'color: rgb(' + Math.floor(255 * Math.random()) + ', ' + Math.floor(255 * Math.random()) + ', ' + Math.floor(255 * Math.random()) + ');'
+            + 'pointer-events: none;';
+            // 添加到body
+            document.body.appendChild(span);
+
+            // 动画效果
+            var start = null;
+            var duration = 3000;
+            var startY = y - 20;
+            var endY = y - 180;
+
+            function animate(timestamp) {
+                if (!start) start = timestamp;
+                var progress = timestamp - start;
+                var opacity = 1 - (progress / duration);
+                var currentY = startY - (progress / duration) * (startY - endY);
+
+                span.style.top = currentY + 'px';
+                span.style.opacity = opacity;
+
+                if (progress < duration) {
+                    requestAnimationFrame(animate);
+                } else {
+                    // 动画结束后移除元素
+                    document.body.removeChild(span);
+                }
+            }
+            requestAnimationFrame(animate);
+        });
+    });
+</script>
+<script>
+// 主题切换功能 - 兼容IE11
+    var themeToggle = document.getElementById('themeToggle');
+    var body = document.body;
+
+    // 检查本地存储支持
+    function hasLocalStorage() {
+        try {
+            var test = 'test';
+            localStorage.setItem(test, test);
+            localStorage.removeItem(test);
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    // 初始化主题
+    var storageSupported = hasLocalStorage();
+    var savedTheme = null;
+    if (storageSupported) {
+        try {
+            savedTheme = localStorage.getItem('theme');
+        } catch (e) {
+            savedTheme = null;
+        }
+    }
+    
+    // 初始化主题
+    var isGlass = savedTheme === 'glass';
+    if (isGlass && body && body.classList) {
+        body.classList.add('glass-theme');
+    }
+    
+    // 更新按钮初始状态
+    if (themeToggle) {
+        themeToggle.textContent = isGlass ? '默认' : '毛玻璃';
+    }
+
+    // 切换主题事件处理函数
+    function toggleTheme() {
+        if (body && body.classList) {
+            body.classList.toggle('glass-theme');
+            var isGlass = body.classList.contains('glass-theme');
+            
+            // 保存主题 - 添加try-catch保护
+            if (storageSupported) {
+                try {
+                    isGlass ? localStorage.setItem('theme', 'glass') : localStorage.removeItem('theme');
+                } catch (e) {
+                    // 忽略存储错误
+                }
+            }
+            
+            // 更新按钮文本
+            if (themeToggle) {
+                themeToggle.textContent = isGlass ? '默认' : '毛玻璃';
+            }
+        }
+    }
+    
+    // 绑定切换主题事件 - 兼容IE11
+    if (themeToggle) {
+        if (themeToggle.addEventListener) {
+            themeToggle.addEventListener('click', toggleTheme);
+        } else if (themeToggle.attachEvent) {
+            themeToggle.attachEvent('onclick', toggleTheme);
+        }
+    }
+</script>
+<script>
+    // 粒子彩带特效
+    function startRibbons() {
+        window.ribbonsAnimation = true;
+
+        (function (name, factory) {
+            if (typeof window === "object") {
+                window[name] = factory();
+            }
+        })("Ribbons", function () {
+            var _w = window, _b = document.body, _d = document.documentElement;
+
+            var random = function () {
+                if (arguments.length === 1) {
+                    if (Array.isArray(arguments[0])) {
+                        var index = Math.round(random(0, arguments[0].length - 1));
+                        return arguments[0][index];
+                    }
+                    return random(0, arguments[0]);
+                } else if (arguments.length === 2) {
+                    return Math.random() * (arguments[1] - arguments[0]) + arguments[0];
+                }
+                return 0;
+            };
+
+            var screenInfo = function (e) {
+                var width = Math.max(0, _w.innerWidth || _d.clientWidth || _b.clientWidth || 0);
+                var height = Math.max(0, _w.innerHeight || _d.clientHeight || _b.clientHeight || 0);
+                var scrollx = Math.max(0, _w.pageXOffset || _d.scrollLeft || _b.scrollLeft || 0) - (_d.clientLeft || 0);
+                var scrolly = Math.max(0, _w.pageYOffset || _d.scrollTop || _b.scrollTop || 0) - (_d.clientTop || 0);
+
+                return {
+                    width: width,
+                    height: height,
+                    ratio: width / height,
+                    centerx: width / 2,
+                    centery: height / 2,
+                    scrollx: scrollx,
+                    scrolly: scrolly
+                };
+            };
+
+            var mouseInfo = function (e) {
+                var screen = screenInfo(e);
+                var mousex = e ? Math.max(0, e.pageX || e.clientX || 0) : 0;
+                var mousey = e ? Math.max(0, e.pageY || e.clientY || 0) : 0;
+
+                return {
+                    mousex: mousex,
+                    mousey: mousey,
+                    centerx: mousex - screen.width / 2,
+                    centery: mousey - screen.height / 2
+                };
+            };
+
+            var Point = function (x, y) {
+                this.x = 0;
+                this.y = 0;
+                this.set(x, y);
+            };
+
+            Point.prototype = {
+                constructor: Point,
+                set: function (x, y) {
+                    this.x = x || 0;
+                    this.y = y || 0;
+                },
+                copy: function (point) {
+                    this.x = point.x || 0;
+                    this.y = point.y || 0;
+                    return this;
+                },
+                multiply: function (x, y) {
+                    this.x *= x || 1;
+                    this.y *= y || 1;
+                    return this;
+                },
+                divide: function (x, y) {
+                    this.x /= x || 1;
+                    this.y /= y || 1;
+                    return this;
+                },
+                add: function (x, y) {
+                    this.x += x || 0;
+                    this.y += y || 0;
+                    return this;
+                },
+                subtract: function (x, y) {
+                    this.x -= x || 0;
+                    this.y -= y || 0;
+                    return this;
+                },
+                clampX: function (min, max) {
+                    this.x = Math.max(min, Math.min(this.x, max));
+                    return this;
+                },
+                clampY: function (min, max) {
+                    this.y = Math.max(min, Math.min(this.y, max));
+                    return this;
+                },
+                flipX: function () {
+                    this.x *= -1;
+                    return this;
+                },
+                flipY: function () {
+                    this.y *= -1;
+                    return this;
+                }
+            };
+
+            var Factory = function (options) {
+                this._canvas = null;
+                this._context = null;
+                this._sto = null;
+                this._width = 0;
+                this._height = 0;
+                this._scroll = 0;
+                this._ribbons = [];
+                this._options = {
+                    colorSaturation: "80%",
+                    colorBrightness: "60%",
+                    colorAlpha: 0.65,
+                    colorCycleSpeed: 6,
+                    verticalPosition: "center",
+                    horizontalSpeed: 200,
+                    ribbonCount: 4,
+                    strokeSize: 0,
+                    parallaxAmount: -0.5,
+                    animateSections: true
+                };
+
+                this._onDraw = this._onDraw.bind(this);
+                this._onResize = this._onResize.bind(this);
+                this._onScroll = this._onScroll.bind(this);
+
+                this.setOptions(options);
+                this.init();
+            };
+
+            Factory.prototype = {
+                constructor: Factory,
+                setOptions: function (options) {
+                    if (typeof options === "object") {
+                        for (var key in options) {
+                            if (options.hasOwnProperty(key)) {
+                                this._options[key] = options[key];
+                            }
+                        }
+                    }
+                },
+                init: function () {
+                    try {
+                        this._canvas = document.createElement("canvas");
+                        this._canvas.style["display"] = "block";
+                        this._canvas.style["position"] = "fixed";
+                        this._canvas.style["margin"] = "0";
+                        this._canvas.style["padding"] = "0";
+                        this._canvas.style["border"] = "0";
+                        this._canvas.style["outline"] = "0";
+                        this._canvas.style["left"] = "0";
+                        this._canvas.style["top"] = "0";
+                        this._canvas.style["width"] = "100%";
+                        this._canvas.style["height"] = "100%";
+                        this._canvas.style["z-index"] = "1";
+                        this._canvas.style["background-color"] = "transparent";
+                        this._canvas.id = "bgCanvas";
+
+                        this._onResize();
+                        this._context = this._canvas.getContext("2d");
+                        this._context.clearRect(0, 0, this._width, this._height);
+                        this._context.globalAlpha = this._options.colorAlpha;
+
+                        window.addEventListener("resize", this._onResize);
+                        window.addEventListener("scroll", this._onScroll);
+
+                        var body_ = document.getElementsByTagName('body')[0];
+                        body_.appendChild(this._canvas);
+                    } catch (e) {
+                        console.warn("Canvas Context Error: " + e.toString());
+                        return;
+                    }
+
+                    this._onDraw();
+                },
+                addRibbon: function () {
+                    var dir = Math.round(random(1, 9)) > 5 ? "right" : "left";
+                    var stop = 1000;
+                    var hide = 200;
+                    var min = 0 - hide;
+                    var max = this._width + hide;
+                    var movex = 0;
+                    var movey = 0;
+                    var startx = dir === "right" ? min : max;
+                    var starty = Math.round(random(0, this._height));
+
+                    if (/^(top|min)$/i.test(this._options.verticalPosition)) {
+                        starty = 0 + hide;
+                    } else if (/^(middle|center)$/i.test(this._options.verticalPosition)) {
+                        starty = this._height / 2;
+                    } else if (/^(bottom|max)$/i.test(this._options.verticalPosition)) {
+                        starty = this._height - hide;
+                    }
+
+                    var ribbon = [];
+                    var point1 = new Point(startx, starty);
+                    var point2 = new Point(startx, starty);
+                    var point3 = null;
+                    var color = Math.round(random(0, 360));
+                    var delay = 0;
+
+                    while (true) {
+                        if (stop <= 0) break;
+                        stop--;
+
+                        movex = Math.round((Math.random() * 1 - 0.2) * this._options.horizontalSpeed);
+                        movey = Math.round((Math.random() * 1 - 0.5) * (this._height * 0.25));
+
+                        point3 = new Point();
+                        point3.copy(point2);
+
+                        if (dir === "right") {
+                            point3.add(movex, movey);
+                            if (point2.x >= max) break;
+                        } else if (dir === "left") {
+                            point3.subtract(movex, movey);
+                            if (point2.x <= min) break;
+                        }
+
+                        ribbon.push({
+                            point1: new Point(point1.x, point1.y),
+                            point2: new Point(point2.x, point2.y),
+                            point3: point3,
+                            color: color,
+                            delay: delay,
+                            dir: dir,
+                            alpha: 0,
+                            phase: 0
+                        });
+
+                        point1.copy(point2);
+                        point2.copy(point3);
+                        delay += 4;
+                        color += this._options.colorCycleSpeed;
+                    }
+
+                    this._ribbons.push(ribbon);
+                },
+                _drawRibbonSection: function (section) {
+                    if (section) {
+                        if (section.phase >= 1 && section.alpha <= 0) {
+                            return true;
+                        }
+
+                        if (section.delay <= 0) {
+                            section.phase += 0.02;
+                            section.alpha = Math.sin(section.phase) * 1;
+                            section.alpha = section.alpha <= 0 ? 0 : section.alpha;
+                            section.alpha = section.alpha >= 1 ? 1 : section.alpha;
+
+                            if (this._options.animateSections) {
+                                var mod = Math.sin(1 + section.phase * Math.PI / 2) * 0.1;
+
+                                if (section.dir === "right") {
+                                    section.point1.add(mod, 0);
+                                    section.point2.add(mod, 0);
+                                    section.point3.add(mod, 0);
+                                } else {
+                                    section.point1.subtract(mod, 0);
+                                    section.point2.subtract(mod, 0);
+                                    section.point3.subtract(mod, 0);
+                                }
+
+                                section.point1.add(0, mod);
+                                section.point2.add(0, mod);
+                                section.point3.add(0, mod);
+                            }
+                        } else {
+                            section.delay -= 0.5;
+                        }
+
+                        var s = this._options.colorSaturation;
+                        var l = this._options.colorBrightness;
+                        var c = "hsla(" + section.color + ", " + s + ", " + l + ", " + section.alpha + " )";
+
+                        this._context.save();
+
+                        if (this._options.parallaxAmount !== 0) {
+                            this._context.translate(0, this._scroll * this._options.parallaxAmount);
+                        }
+
+                        this._context.beginPath();
+                        this._context.moveTo(section.point1.x, section.point1.y);
+                        this._context.lineTo(section.point2.x, section.point2.y);
+                        this._context.lineTo(section.point3.x, section.point3.y);
+                        this._context.fillStyle = c;
+                        this._context.fill();
+
+                        if (this._options.strokeSize > 0) {
+                            this._context.lineWidth = this._options.strokeSize;
+                            this._context.strokeStyle = c;
+                            this._context.lineCap = "round";
+                            this._context.stroke();
+                        }
+
+                        this._context.restore();
+                    }
+
+                    return false;
+                },
+                _onDraw: function () {
+                    if (!window.ribbonsAnimation) return;
+
+                    for (var i = 0, t = this._ribbons.length; i < t; ++i) {
+                        if (!this._ribbons[i]) {
+                            this._ribbons.splice(i, 1);
+                        }
+                    }
+
+                    this._context.clearRect(0, 0, this._width, this._height);
+
+                    for (var a = 0; a < this._ribbons.length; ++a) {
+                        var ribbon = this._ribbons[a];
+                        var numSections = ribbon.length;
+                        var numDone = 0;
+
+                        for (var b = 0; b < numSections; ++b) {
+                            if (this._drawRibbonSection(ribbon[b])) {
+                                numDone++;
+                            }
+                        }
+
+                        if (numDone >= numSections) {
+                            this._ribbons[a] = null;
+                        }
+                    }
+
+                    if (this._ribbons.length < this._options.ribbonCount) {
+                        this.addRibbon();
+                    }
+
+                    if (window.ribbonsAnimation) {
+                        requestAnimationFrame(this._onDraw);
+                    }
+                },
+                _onResize: function (e) {
+                    var screen = screenInfo(e);
+                    this._width = screen.width;
+                    this._height = screen.height;
+
+                    if (this._canvas) {
+                        this._canvas.width = this._width;
+                        this._canvas.height = this._height;
+
+                        if (this._context) {
+                            this._context.globalAlpha = this._options.colorAlpha;
+                        }
+                    }
+                },
+                _onScroll: function (e) {
+                    var screen = screenInfo(e);
+                    this._scroll = screen.scrolly;
+                }
+            };
+
+            return Factory;
+        });
+
+        new Ribbons();
+    }
+    // 粒子线条特效
+    function startParticles() {
+        var particlesAnimation = true;
+
+        !function () {
+            function get_attribute(node, attr, default_value) {
+                return node.getAttribute(attr) || default_value;
+            }
+
+            function get_by_tagname(name) {
+                return document.getElementsByTagName(name);
+            }
+
+            function get_config_option() {
+                var scripts = get_by_tagname("script"),
+                    script_len = scripts.length,
+                    script = scripts[script_len - 1];
+                return {
+                    l: script_len,
+                    z: get_attribute(script, "zIndex", 0),
+                    o: get_attribute(script, "opacity", 0.8),
+                    c: get_attribute(script, "color", "255,255,255"),
+                    n: get_attribute(script, "count", 350)
+                };
+            }
+
+            function set_canvas_size() {
+                canvas_width = the_canvas.width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+                canvas_height = the_canvas.height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
+            }
+
+            function draw_canvas() {
+                if (!particlesAnimation) return;
+
+                context.clearRect(0, 0, canvas_width, canvas_height);
+                var e, i, d, x_dist, y_dist, dist;
+
+                random_points.forEach(function (r, idx) {
+                    r.x += r.xa;
+                    r.y += r.ya;
+                    r.xa *= r.x > canvas_width || r.x < 0 ? -1 : 1;
+                    r.ya *= r.y > canvas_height || r.y < 0 ? -1 : 1;
+                    context.fillRect(r.x - 0.5, r.y - 0.5, 1, 1);
+
+                    for (i = idx + 1; i < all_array.length; i++) {
+                        e = all_array[i];
+                        if (null !== e.x && null !== e.y) {
+                            x_dist = r.x - e.x;
+                            y_dist = r.y - e.y;
+                            dist = x_dist * x_dist + y_dist * y_dist;
+                            dist < e.max && (
+                                e === current_point && dist >= e.max / 2 && (
+                                    r.x -= 0.03 * x_dist,
+                                    r.y -= 0.03 * y_dist
+                                ),
+                                d = (e.max - dist) / e.max,
+                                context.beginPath(),
+                                context.lineWidth = d / 2,
+                                context.strokeStyle = "rgba(" + config.c + "," + (d / 2) + ")",
+                                context.moveTo(r.x, r.y),
+                                context.lineTo(e.x, e.y),
+                                context.stroke()
+                            );
+                        }
+                    }
+                });
+
+                if (particlesAnimation) {
+                    frame_func(draw_canvas);
+                }
+            }
+
+            // 创建画布
+            var the_canvas = document.createElement("canvas"),
+                config = get_config_option(),
+                canvas_id = "c_n" + config.l,
+                context = the_canvas.getContext("2d"),
+                canvas_width, canvas_height,
+                frame_func = window.requestAnimationFrame || window.webkitRequestAnimationFrame ||
+                    window.mozRequestAnimationFrame || window.oRequestAnimationFrame ||
+                    window.msRequestAnimationFrame || function (func) {
+                        window.setTimeout(func, 1000 / 40);
+                    },
+                random = Math.random,
+                current_point = {
+                    x: null,
+                    y: null,
+                    max: 20000
+                },
+                all_array;
+
+            the_canvas.id = canvas_id;
+            the_canvas.style.cssText = "position:fixed;top:0;left:0;z-index:2;opacity:" + config.o;
+            document.body.appendChild(the_canvas);
+
+            set_canvas_size();
+            window.onresize = set_canvas_size;
+
+            window.onmousemove = function (e) {
+                e = e || window.event;
+                current_point.x = e.clientX;
+                current_point.y = e.clientY;
+            };
+
+            window.onmouseout = function () {
+                current_point.x = null;
+                current_point.y = null;
+            };
+
+            var random_points = [];
+            for (var i = 0; config.n > i; i++) {
+                var x = random() * canvas_width,
+                    y = random() * canvas_height,
+                    xa = 2 * random() - 1,
+                    ya = 2 * random() - 1;
+                random_points.push({
+                    x: x,
+                    y: y,
+                    xa: xa,
+                    ya: ya,
+                    max: 6000
+                });
+            }
+
+            all_array = random_points.concat([current_point]);
+
+            setTimeout(function () {
+                draw_canvas();
+            }, 100);
+        }();
+    }
+
+    // 初始化所有特效
+    function initEffects() {
+		startRibbons();
+		startParticles();
+    }
+    
+    // 确保DOM加载完成后再初始化特效
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initEffects);
+    } else {
+        initEffects();
+    }
+</script>
+</html>
