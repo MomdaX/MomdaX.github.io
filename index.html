@@ -20,53 +20,7 @@
             position: relative;
         }
 
-        /* 背景粒子画布 (装饰) */
-        #particle-canvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-            pointer-events: none;
-        }
-
-        /* 飘浮爱心背景 (装饰) */
-        .bg_heart {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            z-index: 2;
-            pointer-events: none;
-        }
-
-        .heart {
-            position: absolute;
-            top: -50%;
-            transform: rotate(-45deg);
-        }
-        .heart:before,
-        .heart:after {
-            position: absolute;
-            display: block;
-            content: "";
-            width: 100%;
-            height: 100%;
-            background: inherit;
-            border-radius: 100%;
-        }
-        .heart:before { top: -50%; left: 0; }
-        .heart:after { top: 0; right: -50%; }
-
-        @keyframes love {
-            0% { top: 110%; transform: rotate(-45deg) scale(1); }
-            100% { top: -50%; transform: rotate(-45deg) scale(1.5); }
-        }
-
-        /* Three.js 画布容器 (占满整个视口) */
+        /* Three.js 画布容器 */
         #train-canvas {
             position: fixed;
             top: 0;
@@ -80,123 +34,6 @@
         }
         #train-canvas:active {
             cursor: grabbing;
-        }
-
-        /* 音乐播放器样式 */
-        .music-player {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 30;
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            background: rgba(20, 28, 40, 0.75);
-            backdrop-filter: blur(12px);
-            border-radius: 50px;
-            padding: 12px 24px;
-            border: 1px solid rgba(255,255,255,0.15);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-        }
-        .music-btn {
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
-            border: none;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            background: rgba(255,255,255,0.15);
-            color: #fff;
-            transition: all 0.25s ease;
-        }
-        .music-btn:hover {
-            background: rgba(255,255,255,0.25);
-            transform: scale(1.08);
-        }
-        .music-btn.play-btn {
-            width: 48px;
-            height: 48px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            font-size: 20px;
-        }
-        .music-btn.play-btn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        }
-        .headlight-btn {
-            font-size: 18px;
-        }
-        .headlight-btn:hover {
-            background: rgba(255,255,255,0.25);
-            transform: scale(1.08);
-        }
-        .headlight-btn.active {
-            background: linear-gradient(135deg, #ffd700 0%, #ffa500 100%);
-            color: #1a1a1a;
-            box-shadow: 0 4px 12px rgba(255, 215, 0, 0.5);
-        }
-        .music-info-container {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            width: 220px;
-        }
-        .music-info {
-            display: flex;
-            align-items: center;
-            overflow: hidden;
-            white-space: nowrap;
-        }
-        .music-title {
-            color: #fff;
-            font-size: 0.95rem;
-            font-weight: 500;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .music-divider {
-            color: rgba(255,255,255,0.4);
-            margin: 0 4px;
-        }
-        .music-artist {
-            color: rgba(255,255,255,0.65);
-            font-size: 0.85rem;
-            flex-shrink: 0;
-        }
-        .progress-area {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .progress-bar {
-            flex: 1;
-            height: 4px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 2px;
-            cursor: pointer;
-            overflow: hidden;
-        }
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #667eea, #764ba2);
-            border-radius: 2px;
-            transition: width 0.1s linear;
-        }
-        .time-display {
-            color: rgba(255,255,255,0.7);
-            font-size: 0.75rem;
-            min-width: 70px;
-            text-align: right;
-        }
-        .visualizer {
-            width: 120px;
-            height: 40px;
-            border-radius: 8px;
-            background: rgba(0,0,0,0.3);
         }
 
         /* UI 导航面板 (位于上半部分) */
@@ -317,10 +154,11 @@
             .link-btn { padding: 8px 20px; font-size: 1rem; }
         }
     </style>
+    <link rel="stylesheet" href="music/music.css">
+    <link rel="stylesheet" href="effects/particles.css">
+    <link rel="stylesheet" href="effects/hearts.css">
 </head>
 <body>
-    <canvas id="particle-canvas"></canvas>
-    <div class="bg_heart"></div>
     <canvas id="train-canvas"></canvas>
     
     <div class="container">
@@ -343,29 +181,9 @@
                 <div class="nav-item"><a href="https://doc.vb6.pro/" target="_blank">VB MAN/2</a></div>
             </div>
         </div>
-        <div class="footer">© 2026 铁路3D交互 | 鼠标拖拽旋转/右键平移/滚轮缩放</div>
+        <div class="footer">© 2026 铁路3D交互 | <a href="https://momdax.github.io" target="_blank">Momda_X主页</a></div>
     </div>
-    
-    <div class="music-player">
-        <button class="music-btn" id="prevBtn">⏮</button>
-        <button class="music-btn play-btn" id="playBtn">▶</button>
-        <button class="music-btn" id="nextBtn">⏭</button>
-        <div class="music-info-container">
-            <div class="music-info">
-                <span class="music-title" id="musicTitle">Call Me Tonight</span>
-                <span class="music-divider"> - </span>
-                <span class="music-artist" id="musicArtist">Unknown Artist</span>
-            </div>
-            <div class="progress-area">
-                <div class="progress-bar" id="progressBar">
-                    <div class="progress-fill" id="progressFill"></div>
-                </div>
-                <div class="time-display" id="timeDisplay">0:00 / 0:00</div>
-            </div>
-        </div>
-        <canvas id="visualizer" class="visualizer"></canvas>
-        <button class="music-btn headlight-btn" id="headlightBtn">💡</button>
-    </div>
+
 
     <script type="importmap">
     {
@@ -379,8 +197,17 @@
     <script type="module">
         import TrackBuilder from './huoche/TrackBuilder.js';
         
-        window.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('DOMContentLoaded', async () => {
+            // 加载粒子特效
+            const particlesRes = await fetch('effects/particles.html');
+            document.body.insertAdjacentHTML('afterbegin', await particlesRes.text());
+            const { startParticles } = await import('./effects/particles.js');
             startParticles();
+            
+            // 加载爱心特效
+            const heartsRes = await fetch('effects/hearts.html');
+            document.body.insertAdjacentHTML('afterbegin', await heartsRes.text());
+            const { startHeartAnimation } = await import('./effects/hearts.js');
             startHeartAnimation();
             
             const railway = new TrackBuilder('train-canvas');
@@ -388,385 +215,16 @@
             
             window.railTrackSystem = railway;
             
-            initMusicPlayer();
+            // 加载音乐播放器组件
+            (async () => {
+                const htmlRes = await fetch('music/music.html');
+                const html = await htmlRes.text();
+                document.body.insertAdjacentHTML('beforeend', html);
+                const { initMusicPlayer } = await import('./music/music.js');
+                initMusicPlayer();
+            })();
         });
         
-        function startParticles() {
-            const canvas = document.getElementById('particle-canvas');
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            let width, height;
-            let points = [];
-            const PARTICLE_COUNT = 65;
-            const CONNECT_DIST = 5500;
-            
-            function resizeCanvas() {
-                width = canvas.width = window.innerWidth;
-                height = canvas.height = window.innerHeight;
-            }
-            window.addEventListener('resize', resizeCanvas);
-            resizeCanvas();
-            
-            for (let i = 0; i < PARTICLE_COUNT; i++) {
-                points.push({
-                    x: Math.random() * width,
-                    y: Math.random() * height,
-                    vx: (Math.random() - 0.5) * 0.6,
-                    vy: (Math.random() - 0.5) * 0.4 + 0.2,
-                });
-            }
-            
-            function draw() {
-                if (!ctx) return;
-                ctx.clearRect(0, 0, width, height);
-                for (let p of points) {
-                    p.x += p.vx;
-                    p.y += p.vy;
-                    if (p.x < 0) p.x = width;
-                    if (p.x > width) p.x = 0;
-                    if (p.y < 0) p.y = height;
-                    if (p.y > height) p.y = 0;
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, 1.6, 0, Math.PI*2);
-                    ctx.fillStyle = 'rgba(210, 225, 255, 0.7)';
-                    ctx.fill();
-                }
-                for (let i = 0; i < points.length; i++) {
-                    for (let j = i+1; j < points.length; j++) {
-                        const dx = points[i].x - points[j].x;
-                        const dy = points[i].y - points[j].y;
-                        const dist = dx*dx + dy*dy;
-                        if (dist < CONNECT_DIST) {
-                            ctx.beginPath();
-                            ctx.moveTo(points[i].x, points[i].y);
-                            ctx.lineTo(points[j].x, points[j].y);
-                            ctx.strokeStyle = `rgba(140, 180, 255, ${0.25 * (1 - dist/CONNECT_DIST)})`;
-                            ctx.stroke();
-                        }
-                    }
-                }
-                requestAnimationFrame(draw);
-            }
-            draw();
-        }
-        
-        function startHeartAnimation() {
-            const heartContainer = document.querySelector('.bg_heart');
-            if (!heartContainer) return;
-            setInterval(() => {
-                const size = Math.floor(Math.random() * 45) + 18;
-                const left = Math.random() * 95;
-                const duration = Math.random() * 4 + 4;
-                const heart = document.createElement('div');
-                heart.className = 'heart';
-                heart.style.width = size + 'px';
-                heart.style.height = size + 'px';
-                heart.style.left = left + '%';
-                heart.style.backgroundColor = `rgba(255, ${120 + Math.random() * 80}, 150, 0.7)`;
-                heart.style.animation = `love ${duration}s ease-in forwards`;
-                heartContainer.appendChild(heart);
-                setTimeout(() => heart.remove(), duration * 1000);
-            }, 520);
-        }
-        
-        async function initMusicPlayer() {
-            let audioFiles = [];
-            
-            try {
-                const response = await fetch('assets/audio/music.json');
-                if (response.ok) {
-                    audioFiles = await response.json();
-                }
-            } catch (e) {
-                console.error('Failed to load music list:', e);
-                audioFiles = [
-                    { title: 'Call Me Tonight', artist: 'Unknown Artist', path: 'assets/audio/CallMe Tonight.mp3' }
-                ];
-            }
-            
-            if (audioFiles.length === 0) {
-                audioFiles = [
-                    { title: 'No Music Found', artist: '-', path: '' }
-                ];
-            }
-            
-            let currentTrack = 0;
-            let audio = null;
-            let isPlaying = false;
-            let audioContext = null;
-            let analyser = null;
-            let sourceNode = null;
-            let animationId = null;
-            
-            const playBtn = document.getElementById('playBtn');
-            const prevBtn = document.getElementById('prevBtn');
-            const nextBtn = document.getElementById('nextBtn');
-            const progressBar = document.getElementById('progressBar');
-            const progressFill = document.getElementById('progressFill');
-            const timeDisplay = document.getElementById('timeDisplay');
-            const musicTitle = document.getElementById('musicTitle');
-            const musicArtist = document.getElementById('musicArtist');
-            const visualizerCanvas = document.getElementById('visualizer');
-            const visualizerCtx = visualizerCanvas ? visualizerCanvas.getContext('2d') : null;
-            
-            function initAudioContext() {
-                if (!audioContext) {
-                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    analyser = audioContext.createAnalyser();
-                    analyser.fftSize = 64;
-                    analyser.smoothingTimeConstant = 0.8;
-                }
-            }
-            
-            function connectAudioSource() {
-                if (!audio || !audioContext || !analyser) return;
-                
-                // 检查是否已经连接过这个音频元素
-                if (sourceNode && sourceNode.mediaElement === audio) {
-                    return; // 已经连接，不需要重新连接
-                }
-                
-                // 断开旧的连接
-                if (sourceNode) {
-                    try {
-                        sourceNode.disconnect();
-                    } catch (e) {
-                        console.warn('Disconnect error:', e);
-                    }
-                    sourceNode = null;
-                }
-                
-                // 创建新的连接
-                try {
-                    sourceNode = audioContext.createMediaElementSource(audio);
-                    sourceNode.connect(analyser);
-                    analyser.connect(audioContext.destination);
-                } catch (e) {
-                    console.error('createMediaElementSource error:', e);
-                }
-            }
-            
-            function drawVisualizer() {
-                if (!visualizerCtx || !analyser || !isPlaying) {
-                    if (visualizerCtx && visualizerCanvas) {
-                        visualizerCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
-                        drawIdleBars();
-                    }
-                    return;
-                }
-                
-                const bufferLength = analyser.frequencyBinCount;
-                const dataArray = new Uint8Array(bufferLength);
-                analyser.getByteFrequencyData(dataArray);
-                
-                const canvasWidth = visualizerCanvas.width;
-                const canvasHeight = visualizerCanvas.height;
-                
-                visualizerCtx.clearRect(0, 0, canvasWidth, canvasHeight);
-                
-                const barCount = 36;
-                const barWidth = canvasWidth / barCount - 1;
-                const barSpacing = 1;
-                
-                for (let i = 0; i < barCount; i++) {
-                    const dataIndex = Math.floor(i * bufferLength / barCount);
-                    const value = dataArray[dataIndex];
-                    const barHeight = (value / 255) * canvasHeight * 0.9;
-                    
-                    const x = i * (barWidth + barSpacing);
-                    const y = canvasHeight - barHeight;
-                    
-                    const gradient = visualizerCtx.createLinearGradient(x, canvasHeight, x, y);
-                    gradient.addColorStop(0, '#667eea');
-                    gradient.addColorStop(1, '#764ba2');
-                    
-                    visualizerCtx.fillStyle = gradient;
-                    visualizerCtx.fillRect(x, y, barWidth, barHeight);
-                }
-                
-                animationId = requestAnimationFrame(drawVisualizer);
-            }
-            
-            function drawIdleBars() {
-                if (!visualizerCtx || !visualizerCanvas) return;
-                
-                const canvasWidth = visualizerCanvas.width;
-                const canvasHeight = visualizerCanvas.height;
-                
-                const barCount = 36;
-                const barWidth = canvasWidth / barCount - 1;
-                const barSpacing = 1;
-                const idleHeight = 4;
-                
-                for (let i = 0; i < barCount; i++) {
-                    const x = i * (barWidth + barSpacing);
-                    const y = canvasHeight - idleHeight;
-                    
-                    visualizerCtx.fillStyle = 'rgba(102, 126, 234, 0.3)';
-                    visualizerCtx.fillRect(x, y, barWidth, idleHeight);
-                }
-            }
-            
-            function updateProgress() {
-                if (!audio || isNaN(audio.duration)) return;
-                const percent = (audio.currentTime / audio.duration) * 100;
-                progressFill.style.width = percent + '%';
-                updateTimeDisplay();
-            }
-            
-            function updateDuration() {
-                if (!audio || isNaN(audio.duration)) {
-                    timeDisplay.textContent = '0:00 / 0:00';
-                } else {
-                    updateTimeDisplay();
-                }
-            }
-            
-            function updateTimeDisplay() {
-                if (!audio || isNaN(audio.duration)) return;
-                const current = formatTime(audio.currentTime);
-                const duration = formatTime(audio.duration);
-                timeDisplay.textContent = `${current} / ${duration}`;
-            }
-            
-            function formatTime(seconds) {
-                if (isNaN(seconds)) return '0:00';
-                const mins = Math.floor(seconds / 60);
-                const secs = Math.floor(seconds % 60);
-                return `${mins}:${secs.toString().padStart(2, '0')}`;
-            }
-            
-            function onTrackEnded() {
-                nextTrack();
-            }
-            
-            function handleAudioError(e) {
-                console.error('Audio error:', e);
-            }
-            
-            function togglePlay() {
-                initAudioContext();
-                
-                // 确保 AudioContext 处于运行状态
-                if (audioContext && audioContext.state === 'suspended') {
-                    audioContext.resume().then(() => {
-                        console.log('AudioContext resumed');
-                    });
-                }
-                
-                if (!audio) {
-                    const track = audioFiles[currentTrack];
-                    audio = new Audio(track.path);
-                    audio.loop = false;
-                    
-                    musicTitle.textContent = track.title;
-                    musicArtist.textContent = track.artist;
-                    
-                    audio.addEventListener('timeupdate', updateProgress);
-                    audio.addEventListener('loadedmetadata', updateDuration);
-                    audio.addEventListener('ended', onTrackEnded);
-                    audio.addEventListener('error', handleAudioError);
-                    
-                    // 连接音频源（只在第一次创建音频时连接）
-                    if (!sourceNode) {
-                        connectAudioSource();
-                    }
-                }
-                
-                if (audio.paused) {
-                    audio.play().then(() => {
-                        isPlaying = true;
-                        playBtn.textContent = '⏸';
-                        drawVisualizer();
-                    }).catch(e => {
-                        console.error('Play error:', e);
-                        playBtn.textContent = '▶';
-                        isPlaying = false;
-                    });
-                } else {
-                    audio.pause();
-                    isPlaying = false;
-                    playBtn.textContent = '▶';
-                    if (animationId) {
-                        cancelAnimationFrame(animationId);
-                    }
-                    drawIdleBars();
-                }
-            }
-            
-            function prevTrack() {
-                currentTrack = (currentTrack - 1 + audioFiles.length) % audioFiles.length;
-                const track = audioFiles[currentTrack];
-                
-                if (audio) {
-                    audio.src = track.path;
-                    musicTitle.textContent = track.title;
-                    musicArtist.textContent = track.artist;
-                    
-                    if (isPlaying) {
-                        audio.play().catch(e => console.error('Play error:', e));
-                        drawVisualizer();
-                    }
-                }
-            }
-            
-            function nextTrack() {
-                currentTrack = (currentTrack + 1) % audioFiles.length;
-                const track = audioFiles[currentTrack];
-                
-                if (audio) {
-                    audio.src = track.path;
-                    musicTitle.textContent = track.title;
-                    musicArtist.textContent = track.artist;
-                    
-                    if (isPlaying) {
-                        audio.play().catch(e => console.error('Play error:', e));
-                        drawVisualizer();
-                    }
-                }
-            }
-            
-            function seekTo(e) {
-                if (!audio || isNaN(audio.duration)) return;
-                const rect = progressBar.getBoundingClientRect();
-                const percent = (e.clientX - rect.left) / rect.width;
-                audio.currentTime = percent * audio.duration;
-            }
-            
-            playBtn.addEventListener('click', togglePlay);
-            prevBtn.addEventListener('click', prevTrack);
-            nextBtn.addEventListener('click', nextTrack);
-            progressBar.addEventListener('click', seekTo);
-            
-            // 车灯控制按钮
-            const headlightBtn = document.getElementById('headlightBtn');
-            // 初始状态：车灯默认是开启的，按钮也应该显示为激活状态
-            if (window.railTrackSystem && window.railTrackSystem.headlightOn) {
-                headlightBtn.classList.add('active');
-            }
-            headlightBtn.addEventListener('click', () => {
-                if (window.railTrackSystem) {
-                    window.railTrackSystem.toggleHeadlights();
-                    headlightBtn.classList.toggle('active');
-                }
-            });
-            
-            // 初始化可视化画布尺寸
-            if (visualizerCanvas) {
-                visualizerCanvas.width = 200;
-                visualizerCanvas.height = 40;
-                drawIdleBars();
-            }
-            
-            window.musicPlayer = {
-                play: togglePlay,
-                pause: () => { if (audio && !audio.paused) { audio.pause(); isPlaying = false; playBtn.textContent = '▶'; if (animationId) cancelAnimationFrame(animationId); drawIdleBars(); } },
-                next: nextTrack,
-                prev: prevTrack,
-                currentTrack: () => currentTrack,
-                totalTracks: () => audioFiles.length
-            };
-        }
     </script>
 </body>
 </html>

@@ -1,0 +1,116 @@
+/* 音乐播放器样式 */
+.music-player {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: rgba(20, 28, 40, 0.75);
+    backdrop-filter: blur(12px);
+    border-radius: 50px;
+    padding: 12px 24px;
+    border: 1px solid rgba(255,255,255,0.15);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+}
+.music-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    transition: all 0.25s ease;
+}
+.music-btn:hover {
+    background: rgba(255,255,255,0.25);
+    transform: scale(1.08);
+}
+.music-btn.play-btn {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    font-size: 20px;
+}
+.music-btn.play-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+.headlight-btn {
+    font-size: 18px;
+}
+.headlight-btn:hover {
+    background: rgba(255,255,255,0.25);
+    transform: scale(1.08);
+}
+.headlight-btn.active {
+    background: linear-gradient(135deg, #ffd700 0%, #ffa500 100%);
+    color: #1a1a1a;
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.5);
+}
+.music-info-container {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 220px;
+}
+.music-info {
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    white-space: nowrap;
+}
+.music-title {
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.music-divider {
+    color: rgba(255,255,255,0.4);
+    margin: 0 4px;
+}
+.music-artist {
+    color: rgba(255,255,255,0.65);
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+.progress-area {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.progress-bar {
+    flex: 1;
+    height: 4px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 2px;
+    cursor: pointer;
+    overflow: hidden;
+}
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    border-radius: 2px;
+    transition: width 0.1s linear;
+}
+.time-display {
+    color: rgba(255,255,255,0.7);
+    font-size: 0.75rem;
+    min-width: 70px;
+    text-align: right;
+}
+.visualizer {
+    width: 120px;
+    height: 40px;
+    border-radius: 8px;
+    background: rgba(0,0,0,0.3);
+}
