@@ -46,8 +46,8 @@ export async function initMusicPlayer() {
         if (!audioContext) {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             analyser = audioContext.createAnalyser();
-            analyser.fftSize = 99;
-            analyser.smoothingTimeConstant = 1;
+            analyser.fftSize = 512;
+            analyser.smoothingTimeConstant = 0.8;
         }
     }
     
@@ -72,62 +72,62 @@ export async function initMusicPlayer() {
             }
             return;
         }
-        
+
         const bufferLength = analyser.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
         analyser.getByteFrequencyData(dataArray);
-        
+
         const canvasWidth = visualizerCanvas.width;
         const canvasHeight = visualizerCanvas.height;
-        
+
         visualizerCtx.clearRect(0, 0, canvasWidth, canvasHeight);
-        
-        const barCount = 40;
-        const barWidth = canvasWidth / barCount;
-        
-        for (let i = 0; i < barCount; i++) {
-            const dataIndex = Math.floor((i + 1) * bufferLength / (barCount + 1));
-            let value = dataArray[dataIndex];
-            
-            if (i >= barCount * 0.6) {
-                const idx1 = Math.floor(bufferLength * 0.5 + (i - barCount * 0.6) * bufferLength * 0.5 / (barCount * 0.4));
-                const idx2 = Math.floor(bufferLength * 0.75 + (i - barCount * 0.6) * bufferLength * 0.25 / (barCount * 0.4));
-                value = Math.max(value, dataArray[idx1] * 2, dataArray[idx2] * 2.5);
-            } else if (i >= barCount * 0.3) {
-                value = value * 1.5;
-            }
-            
-            let barHeight = (value / 255) * canvasHeight;
-            barHeight = Math.max(barHeight, 2);
-            barHeight = Math.min(barHeight, canvasHeight * 0.95);
-            
-            const x = i * barWidth;
+
+        // 对称波形绘制（参考代码方案）
+        const len = Math.floor(bufferLength / 2.5); // 剔除高频部分
+        const barWidth = canvasWidth / len / 2; // 左右对称
+
+        for (let i = 0; i < len; i++) {
+            const data = dataArray[i];
+            const barHeight = (data / 255) * canvasHeight;
             const y = canvasHeight - barHeight;
-            
+
+            // 右半部分
+            const x1 = i * barWidth + canvasWidth / 2;
             visualizerCtx.fillStyle = '#667eea';
-            visualizerCtx.fillRect(x, y, barWidth - 1, barHeight);
+            visualizerCtx.fillRect(x1, y, barWidth - 1, barHeight);
+
+            // 左半部分（镜像）
+            const x2 = canvasWidth / 2 - (i + 1) * barWidth;
+            visualizerCtx.fillRect(x2, y, barWidth - 1, barHeight);
         }
-        
+
         animationId = requestAnimationFrame(drawVisualizer);
     }
     
     function drawIdleBars() {
         if (!visualizerCtx || !visualizerCanvas) return;
-        
+
         const canvasWidth = visualizerCanvas.width;
         const canvasHeight = visualizerCanvas.height;
-        
+
+        visualizerCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+        // 对称 idle 条
         const barCount = 36;
-        const barWidth = canvasWidth / barCount - 1;
-        const barSpacing = 1;
+        const halfCount = Math.floor(barCount / 2);
+        const barWidth = canvasWidth / barCount;
         const idleHeight = 4;
-        
-        for (let i = 0; i < barCount; i++) {
-            const x = i * (barWidth + barSpacing);
+
+        for (let i = 0; i < halfCount; i++) {
+            const x = i * barWidth;
             const y = canvasHeight - idleHeight;
-            
+
+            // 右半部分
             visualizerCtx.fillStyle = 'rgba(102, 126, 234, 0.3)';
-            visualizerCtx.fillRect(x, y, barWidth, idleHeight);
+            visualizerCtx.fillRect(canvasWidth / 2 + x, y, barWidth - 1, idleHeight);
+
+            // 左半部分（镜像）
+            visualizerCtx.fillRect(canvasWidth / 2 - x - barWidth, y, barWidth - 1, idleHeight);
         }
     }
     
@@ -274,7 +274,7 @@ export async function initMusicPlayer() {
     
     // 初始化可视化画布尺寸
     if (visualizerCanvas) {
-        visualizerCanvas.width = 200;
+        visualizerCanvas.width = 120;
         visualizerCanvas.height = 40;
         drawIdleBars();
     }
