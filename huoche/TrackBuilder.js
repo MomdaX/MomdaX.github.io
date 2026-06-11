@@ -257,6 +257,10 @@ class TrackBuilder {
                     this.animationState = 'entering';
                 }
             }
+
+            // 更新风阻效果
+            const currentSpeed = this.animationState === 'paused' ? 0 : this.params.trainSpeed;
+            this.train.updateWindEffect(currentSpeed);
         }
 
         this.controls.update();
@@ -323,6 +327,14 @@ class TrackBuilder {
         window.removeEventListener('resize', () => this._onResize());
         this.scene = null;
         this.controls = null;
+    }
+
+    /** 切换风阻效果 */
+    toggleWindEffect() {
+        if (this.train) {
+            this.train.setWindEffectEnabled(!this.train.windEffectEnabled);
+            console.log('风阻效果:', this.train.windEffectEnabled ? '开启' : '关闭');
+        }
     }
 }
 

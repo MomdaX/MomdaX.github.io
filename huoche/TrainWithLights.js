@@ -37,6 +37,13 @@ export class TrainWithLights {
         // 动画状态
         this.currentZ = -48;
         this.moveDirection = 1;
+
+        // 风阻效果
+        this.windLines = [];
+        this.windTrails = [];
+        this.windEffectEnabled = true;
+        this.windLineCount = 80;
+        this.trailCount = 40;
     }
 
     /**
@@ -104,6 +111,7 @@ export class TrainWithLights {
         this.modelLoaded = true;
 
         this._createHeadlights();
+        this._createWindEffect();
         console.log('列车模型加载完成');
     }
 
@@ -137,6 +145,7 @@ export class TrainWithLights {
         this.modelLoaded = true;
 
         this._createHeadlights();
+        this._createWindEffect();
         console.log('使用简易示意火车模型');
     }
 
@@ -229,6 +238,260 @@ export class TrainWithLights {
     }
 
     /**
+     * 创建风阻效果（空气动力学流线）
+     */
+    _createWindEffect() {
+        if (!this.trainModel) return;
+
+        const p = this.params;
+
+        // 创建多层流线（近场/中场/远场）
+        this._createFlowLines(p.trainScale);
+
+        // 创建尾部湍流效果
+        this._createTurbulenceTrails(p.trainScale);
+
+        console.log('风阻效果创建完成');
+    }
+
+    /**
+     * 创建流线型风线（符合空气动力学）
+     * 靠近车头处风线密集，向后逐渐变稀疏并扩散
+     */
+    _createFlowLines(scale) {
+        const layers = [
+            { radius: 0.6, count: 25, color: 0xffffff, opacity: 0.7 },   // 近场：高亮度
+            { radius: 1.0, count: 30, color: 0x88ddff, opacity: 0.5 },   // 中场：中亮度
+            { radius: 1.5, count: 25, color: 0x4488cc, opacity: 0.3 }    // 远场：低亮度
+        ];
+
+        layers.forEach((layer, layerIndex) => {
+            for (let i = 0; i < layer.count; i++) {
+                const angle = (i / layer.count) * Math.PI * 1.2 - Math.PI * 0.6; // 半椭圆分布
+                const radiusVariation = layer.radius * (0.8 + Math.random() * 0.4);
+
+                const line = this._createFlowLine(scale, radiusVariation, angle, layer, layerIndex);
+
+                // 合并 userData（不要覆盖 _createFlowLine 中设置的 basePoints）
+                Object.assign(line.userData, {
+                    layerIndex,
+                    baseAngle: angle,
+                    radius: radiusVariation,
+                    speed: 0.15 + Math.random() * 0.1,
+                    phase: Math.random() * Math.PI * 2,
+                    age: Math.random() * 2.0
+                });
+
+                this.trainModel.add(line);
+                this.windLines.push(line);
+            }
+        });
+    }
+
+    /**
+     * 创建单条流线
+     */
+    _createFlowLine(scale, radius, angle, layerConfig, layerIndex) {
+        const trainLength = 4 * scale;
+
+        // 流线位置：火车后方（-X方向），火车移动的反方向
+        // 火车绕 Y 轴旋转 90 度，原本的 +X 变成世界的 +Z，所以火车后方是 -X
+        const startX = -trainLength * 0.5;  // 后方开始
+        const startY = Math.cos(angle) * radius * scale * 0.4 + 0.3 * scale;
+        const startZ = Math.sin(angle) * radius * scale;
+
+        // 创建曲线路径（模拟气流）
+        const points = [];
+        const segments = 15;
+
+        for (let i = 0; i <= segments; i++) {
+            const t = i / segments;
+
+            // x: 从后方（-X）向更后方（更小的-X）延伸
+            const x = startX - t * trainLength * 1.5;
+
+            // z: 横向扩散
+            const zSpread = Math.sin(angle) * radius * scale * (1 + t * 0.5);
+
+            // y: 垂直分布，略微上扬
+            const ySpread = Math.cos(angle) * radius * scale * 0.3;
+
+            // 添加波动
+            const wave = Math.sin(t * Math.PI * 2 + layerIndex) * 0.05 * scale;
+
+            points.push(new THREE.Vector3(x, startY + ySpread + wave, startZ + zSpread));
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(points.length * 3);
+        for (let i = 0; i < points.length; i++) {
+            positions[i * 3] = points[i].x;
+            positions[i * 3 + 1] = points[i].y;
+            positions[i * 3 + 2] = points[i].z;
+        }
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+        const material = new THREE.LineBasicMaterial({
+            color: layerConfig.color,
+            transparent: true,
+            opacity: layerConfig.opacity,
+            linewidth: 1
+        });
+
+        const line = new THREE.Line(geometry, material);
+        line.userData.basePoints = points.slice();
+        line.userData.layerIndex = layerIndex;
+
+        return line;
+    }
+
+    /**
+     * 创建尾部湍流效果
+     */
+    _createTurbulenceTrails(scale) {
+        for (let i = 0; i < this.trailCount; i++) {
+            const trail = this._createTrailParticle(scale);
+            trail.userData = {
+                offsetX: -2 * scale,  // 后方位置
+                offsetY: (Math.random() - 0.5) * 0.8 * scale,
+                offsetZ: (Math.random() - 0.5) * 1.5 * scale,
+                speed: 0.2 + Math.random() * 0.3,
+                turbulence: 0.1 + Math.random() * 0.2,
+                phase: Math.random() * Math.PI * 2,
+                size: 0.02 + Math.random() * 0.04
+            };
+            this.trainModel.add(trail);
+            this.windTrails.push(trail);
+        }
+    }
+
+    /**
+     * 创建尾部湍流粒子
+     */
+    _createTrailParticle(scale) {
+        const geometry = new THREE.SphereGeometry(0.03 * scale, 6, 6);
+        const material = new THREE.MeshBasicMaterial({
+            color: 0xaaddff,
+            transparent: true,
+            opacity: 0.4
+        });
+        const particle = new THREE.Mesh(geometry, material);
+        particle.visible = false;
+        return particle;
+    }
+
+    /**
+     * 更新风阻效果（空气动力学模拟）
+     * @param {number} speed - 列车速度
+     */
+    updateWindEffect(speed = 0.05) {
+        if (!this.windLines.length || !this.trainModel) return;
+
+        const time = performance.now() * 0.001;
+        const intensity = Math.min(1, speed / 0.08); // 速度强度
+        const isMoving = speed > 0.01;
+
+        // 更新流线
+        this._updateFlowLines(time, intensity, isMoving);
+
+        // 更新尾部湍流
+        this._updateTurbulenceTrails(time, intensity, isMoving);
+    }
+
+    /**
+     * 更新流线
+     */
+    _updateFlowLines(time, intensity, isMoving) {
+        if (!this.windLines || !this.windLines.length) return;
+
+        this.windLines.forEach((line, index) => {
+            if (!line || !line.userData || !line.userData.basePoints) return;
+
+            const data = line.userData;
+
+            // 生命值周期
+            data.age = (data.age || 0) + 0.016 * (isMoving ? 1 : 0);
+            if (data.age > 2.0) data.age = 0;
+
+            const lifeFactor = 1 - (data.age / 2.0);
+
+            // 基础透明度
+            const baseOpacity = 0.6 * lifeFactor * intensity;
+
+            // 呼吸效果
+            const breathe = 0.8 + Math.sin(time * 3 + data.phase) * 0.2;
+            line.material.opacity = baseOpacity * breathe;
+
+            line.visible = this.windEffectEnabled && isMoving && intensity > 0.1;
+
+            // 流线末端扩散效果
+            const positions = line.geometry.attributes.position.array;
+            const points = data.basePoints;
+
+            for (let i = 0; i < points.length; i++) {
+                const t = i / (points.length - 1);
+
+                // 微小波动模拟湍流
+                const wave = Math.sin(time * 4 + t * Math.PI * 3 + data.phase) * 0.05 * (1 - t * 0.5);
+
+                // 位置：基于 basePoints，但添加波动
+                positions[i * 3] = points[i].x + wave;
+                positions[i * 3 + 1] = points[i].y + wave * 0.5;
+                positions[i * 3 + 2] = points[i].z;
+            }
+
+            line.geometry.attributes.position.needsUpdate = true;
+        });
+    }
+
+    /**
+     * 更新尾部湍流
+     */
+    _updateTurbulenceTrails(time, intensity, isMoving) {
+        if (!this.windTrails || !this.windTrails.length) return;
+
+        this.windTrails.forEach((particle, index) => {
+            if (!particle || !particle.userData) return;
+
+            const data = particle.userData;
+
+            // 更新相位
+            data.phase += 0.02 * data.speed;
+
+            // 湍流位置计算
+            const turbulenceX = Math.sin(data.phase * 2) * data.turbulence * intensity;
+            const turbulenceY = Math.cos(data.phase * 3) * data.turbulence * 0.5 * intensity;
+            const turbulenceZ = Math.sin(data.phase * 1.5) * data.turbulence * 0.3 * intensity;
+
+            // 位置：车尾后方（-X方向），火车移动的反方向
+            particle.position.x = data.offsetX + turbulenceX;
+            particle.position.y = data.offsetY + turbulenceY;
+            particle.position.z = data.offsetZ + turbulenceZ;
+
+            // 透明度随强度变化
+            particle.material.opacity = 0.4 * intensity * (0.5 + Math.sin(time * 5 + index) * 0.5);
+
+            // 缩放动画
+            const scale = 0.8 + Math.sin(time * 3 + data.phase) * 0.3;
+            particle.scale.setScalar(scale);
+
+            particle.visible = this.windEffectEnabled && isMoving && intensity > 0.15;
+
+            // 颜色渐变
+            particle.material.color.setHSL(0.55, 0.6, 0.7);
+        });
+    }
+
+    /**
+     * 设置风阻效果开关
+     */
+    setWindEffectEnabled(enabled) {
+        this.windEffectEnabled = enabled;
+        this.windLines.forEach(line => line.visible = enabled);
+        this.windTrails.forEach(particle => particle.visible = enabled);
+    }
+
+    /**
      * 切换车灯开关
      */
     toggle() {
@@ -300,5 +563,7 @@ export class TrainWithLights {
         }
         this.headlights = [];
         this.beamLayers = [];
+        this.windLines = [];
+        this.windTrails = [];
     }
 }

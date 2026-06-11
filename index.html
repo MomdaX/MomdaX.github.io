@@ -188,7 +188,10 @@
     <script type="importmap">
     {
         "imports": {
-            "three": "./huoche/three.module.js"
+            "three": "./huoche/three.module.js",
+            "three/addons/loaders/GLTFLoader.js": "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/loaders/GLTFLoader.js",
+            "three/addons/loaders/DRACOLoader.js": "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/loaders/DRACOLoader.js",
+            "three/addons/libs/meshopt_decoder.module.js": "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/libs/meshopt_decoder.module.js"
         }
     }
     </script>
@@ -196,6 +199,7 @@
     <!-- 主脚本 -->
     <script type="module">
         import TrackBuilder from './huoche/TrackBuilder.js';
+        import CarModel from './sm_car/CarModel.js';
         
         window.addEventListener('DOMContentLoaded', async () => {
             // 加载粒子特效
@@ -214,6 +218,16 @@
             railway.init();
             
             window.railTrackSystem = railway;
+            
+            // 加载汽车模型
+            const car = new CarModel({
+                scale: 0.6,
+                position: { x: 10, y: 0.3, z: 0 },
+                rotation: { x: 0, y: Math.PI, z: 0 }
+            });
+            await car.loadModel();
+            railway.scene.add(car.getGroup());
+            window.carModel = car;
             
             // 加载音乐播放器组件
             (async () => {
