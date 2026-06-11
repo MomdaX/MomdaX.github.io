@@ -128,24 +128,7 @@
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
         }
         .headlight-btn {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            z-index: 30;
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            border: none;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            background: rgba(20, 28, 40, 0.75);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255,255,255,0.15);
-            color: #fff;
-            transition: all 0.25s ease;
+            font-size: 18px;
         }
         .headlight-btn:hover {
             background: rgba(255,255,255,0.25);
@@ -154,24 +137,43 @@
         .headlight-btn.active {
             background: linear-gradient(135deg, #ffd700 0%, #ffa500 100%);
             color: #1a1a1a;
-            box-shadow: 0 4px 20px rgba(255, 215, 0, 0.5);
+            box-shadow: 0 4px 12px rgba(255, 215, 0, 0.5);
+        }
+        .music-info-container {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            width: 220px;
         }
         .music-info {
             display: flex;
-            flex-direction: column;
-            gap: 2px;
+            align-items: center;
+            overflow: hidden;
+            white-space: nowrap;
         }
         .music-title {
             color: #fff;
             font-size: 0.95rem;
             font-weight: 500;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .music-divider {
+            color: rgba(255,255,255,0.4);
+            margin: 0 4px;
         }
         .music-artist {
             color: rgba(255,255,255,0.65);
-            font-size: 0.8rem;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+        }
+        .progress-area {
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         .progress-bar {
-            width: 180px;
+            flex: 1;
             height: 4px;
             background: rgba(255,255,255,0.2);
             border-radius: 2px;
@@ -187,11 +189,11 @@
         .time-display {
             color: rgba(255,255,255,0.7);
             font-size: 0.75rem;
-            min-width: 80px;
+            min-width: 70px;
             text-align: right;
         }
         .visualizer {
-            width: 200px;
+            width: 120px;
             height: 40px;
             border-radius: 8px;
             background: rgba(0,0,0,0.3);
@@ -348,18 +350,22 @@
         <button class="music-btn" id="prevBtn">⏮</button>
         <button class="music-btn play-btn" id="playBtn">▶</button>
         <button class="music-btn" id="nextBtn">⏭</button>
-        <div class="music-info">
-            <div class="music-title" id="musicTitle">Call Me Tonight</div>
-            <div class="music-artist" id="musicArtist">Unknown Artist</div>
+        <div class="music-info-container">
+            <div class="music-info">
+                <span class="music-title" id="musicTitle">Call Me Tonight</span>
+                <span class="music-divider"> - </span>
+                <span class="music-artist" id="musicArtist">Unknown Artist</span>
+            </div>
+            <div class="progress-area">
+                <div class="progress-bar" id="progressBar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="time-display" id="timeDisplay">0:00 / 0:00</div>
+            </div>
         </div>
-        <div class="progress-bar" id="progressBar">
-            <div class="progress-fill" id="progressFill"></div>
-        </div>
-        <div class="time-display" id="timeDisplay">0:00 / 0:00</div>
         <canvas id="visualizer" class="visualizer"></canvas>
+        <button class="music-btn headlight-btn" id="headlightBtn">💡</button>
     </div>
-
-    <button class="headlight-btn" id="headlightBtn">💡</button>
 
     <script type="importmap">
     {
@@ -734,6 +740,10 @@
             
             // 车灯控制按钮
             const headlightBtn = document.getElementById('headlightBtn');
+            // 初始状态：车灯默认是开启的，按钮也应该显示为激活状态
+            if (window.railTrackSystem && window.railTrackSystem.headlightOn) {
+                headlightBtn.classList.add('active');
+            }
             headlightBtn.addEventListener('click', () => {
                 if (window.railTrackSystem) {
                     window.railTrackSystem.toggleHeadlights();
