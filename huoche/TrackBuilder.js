@@ -30,6 +30,7 @@ class TrackBuilder {
         // 车灯
         this.headlights = [];
         this.headlightOn = true;
+        this.headlightUserControl = false;
 
         this.params = {
             trackLength: 300,          // 轨道总长度
@@ -287,62 +288,110 @@ class TrackBuilder {
         const p = this.params;
 
         for (let i = 0; i < 2; i++) {
-            const headlight = new THREE.SpotLight(p.headlightColor, this.headlightOn ? p.headlightIntensity : 0);
-            const xOffset = (i === 0 ? -0.25 : 0.25) * p.trainScale; // 车灯左右偏移（左负右正）
-            headlight.position.set(-28 * p.trainScale, -0.1 * p.trainScale, xOffset); // 车灯位置（X:车头方向, Y:高度, Z:左右）
-            headlight.target.position.set(35 * p.trainScale, 0.2 * p.trainScale, xOffset); // 灯光照射目标点（沿车头方向）
-            headlight.distance = p.headlightDistance; // 灯光照射距离
-            headlight.angle = p.headlightAngle;
-            headlight.penumbra = p.headlightPenumbra;
+            const zOffset = (i === 0 ? -0.13 : 0.13) * p.trainScale;  // Z轴偏移（左右车灯间距）
+            const lightY = 0.52 * p.trainScale;                        // Y轴高度（车灯离地高度）
+            const lightX = 0;                                          // X轴位置（沿列车长度方向）
+            
+            const beamForwardOffset = -26.5 * p.trainScale;             // 光束起点（车灯位置）
+
+            // 1. 聚光灯（照亮场景，方向略微向上前方）
+            const headlight = new THREE.SpotLight(0xffffff, this.headlightOn ? 30.0 : 0);
+            headlight.position.set(lightX + beamForwardOffset, lightY, zOffset);
+            headlight.target.position.set(35 * p.trainScale + beamForwardOffset, 0.2 * p.trainScale, zOffset);
+            headlight.distance = 360;
+            headlight.angle = Math.PI / 6;
+            headlight.penumbra = 0.12;
             headlight.decay = 1.5;
             headlight.castShadow = true;
-            headlight.shadow.mapSize.width = 512;
-            headlight.shadow.mapSize.height = 512;
+            headlight.shadow.mapSize.width = 1024;
+            headlight.shadow.mapSize.height = 1024;
+            headlight.shadow.camera.near = 0.1;
+            headlight.shadow.camera.far = 200;
+            headlight.shadow.camera.fov = 18;
 
-            const bulbGeo = new THREE.SphereGeometry(0.08 * p.trainScale, 8, 8);
-            const bulbMat = new THREE.MeshBasicMaterial({ 
-                color: p.headlightColor,
-                transparent: true,
-                opacity: this.headlightOn ? 1 : 0
+            // 多层锥形光束（视觉特效，从车灯向前伸展，带渐变纹理）
+            const beamLength = 66 * p.trainScale;
+            const beams = [];
+            
+            const beamLayers = [
+                { startRadius: 0.08, endRadius: 0.5, opacity: 0.9 },
+                { startRadius: 0.15, endRadius: 0.75, opacity: 0.6 },
+                { startRadius: 0.22, endRadius: 1.0, opacity: 0.4 },
+                { startRadius: 0.3, endRadius: 1.3, opacity: 0.25 }
+            ];
+            
+            beamLayers.forEach((layer, index) => {
+                const beamGeo = new THREE.CylinderGeometry(layer.startRadius, layer.endRadius, beamLength, 16, 1, true);
+                
+                const beamCanvas = document.createElement('canvas');
+                beamCanvas.width = 64;
+                beamCanvas.height = 256;
+                const ctx = beamCanvas.getContext('2d');
+                
+                const gradient = ctx.createLinearGradient(0, 0, 0, beamCanvas.height);
+                const alphaStart = layer.opacity;
+                gradient.addColorStop(0, `rgba(255, 255, 255, ${alphaStart})`);
+                gradient.addColorStop(0.25, `rgba(255, 255, 252, ${alphaStart * 0.7})`);
+                gradient.addColorStop(0.5, `rgba(255, 255, 245, ${alphaStart * 0.4})`);
+                gradient.addColorStop(0.75, `rgba(255, 255, 230, ${alphaStart * 0.15})`);
+                gradient.addColorStop(1, 'rgba(255, 255, 220, 0)');
+                
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, beamCanvas.width, beamCanvas.height);
+                
+                const beamTexture = new THREE.CanvasTexture(beamCanvas);
+                beamTexture.wrapS = THREE.ClampToEdgeWrapping;
+                beamTexture.wrapT = THREE.ClampToEdgeWrapping;
+                
+                const beamMat = new THREE.MeshBasicMaterial({
+                    map: beamTexture,
+                    transparent: true,
+                    opacity: this.headlightOn ? 0.85 : 0,
+                    side: THREE.FrontSide,
+                    depthWrite: false
+                });
+                const beam = new THREE.Mesh(beamGeo, beamMat);
+                
+                beam.rotation.z = -Math.PI / 2;
+                beam.position.set(lightX + beamForwardOffset - beamLength / 2, lightY - index * 0.005, zOffset);
+                
+                this.trainModel.add(beam);
+                beams.push(beam);
             });
-            const bulb = new THREE.Mesh(bulbGeo, bulbMat);
-            bulb.position.copy(headlight.position);
-
-            const glowGeo = new THREE.SphereGeometry(0.15 * p.trainScale, 8, 8);
-            const glowMat = new THREE.MeshBasicMaterial({
-                color: p.headlightColor,
-                transparent: true,
-                opacity: this.headlightOn ? 0.5 : 0
-            });
-            const glow = new THREE.Mesh(glowGeo, glowMat);
-            glow.position.copy(headlight.position);
 
             this.trainModel.add(headlight);
             this.trainModel.add(headlight.target);
-            this.trainModel.add(bulb);
-            this.trainModel.add(glow);
 
             this.headlights.push({
                 light: headlight,
-                bulb: bulb,
-                glow: glow
+                beams: beams
             });
         }
 
-        console.log('车灯创建完成');
+        console.log('车灯及自然光束创建完成');
     }
 
     _updateHeadlights() {
         if (this.headlights.length === 0) return;
 
-        const p = this.params;
-        const targetIntensity = this.headlightOn ? p.headlightIntensity : 0;
+        const targetIntensity = this.headlightOn ? 30.0 : 0;
+        const targetBeamOpacity = this.headlightOn ? 0.85 : 0;
 
         this.headlights.forEach((hl) => {
             hl.light.intensity = targetIntensity;
-            hl.bulb.material.opacity = this.headlightOn ? 1 : 0;
-            hl.glow.material.opacity = this.headlightOn ? 0.5 : 0;
+            if (hl.beams) {
+                hl.beams.forEach(beam => {
+                    beam.material.opacity = targetBeamOpacity;
+                });
+            }
         });
+    }
+
+    toggleHeadlights() {
+        this.headlightUserControl = true;
+        this.headlightOn = !this.headlightOn;
+        this._updateHeadlights();
+        console.log('车灯状态:', this.headlightOn ? '开启' : '关闭');
     }
 
     _animate() {
@@ -367,7 +416,10 @@ class TrackBuilder {
             if (this.animationState === 'entering') {
                 const step = this.params.trainSpeed * delta * 60;
                 this.currentZ += step;
-                this.headlightOn = true;
+                if (!this.headlightUserControl) {
+                    this.headlightOn = true;
+                    this._updateHeadlights();
+                }
 
                 if (this.currentZ >= trackCenter) {
                     this.currentZ = trackCenter;
@@ -383,7 +435,10 @@ class TrackBuilder {
             } else if (this.animationState === 'exiting') {
                 const step = this.params.trainSpeed * delta * 60;
                 this.currentZ += step;
-                this.headlightOn = true;
+                if (!this.headlightUserControl) {
+                    this.headlightOn = true;
+                    this._updateHeadlights();
+                }
 
                 if (this.currentZ >= this.params.boundsMaxZ + 10) {
                     this.currentZ = this.params.boundsMinZ - 10;
