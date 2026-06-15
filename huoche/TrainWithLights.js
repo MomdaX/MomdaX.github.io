@@ -34,6 +34,10 @@ export class TrainWithLights {
         this.headlightOn = true;
         this.beamLayers = [];
 
+        // 车内灯光（窗户发光）
+        this.interiorLights = [];
+        this.windowMaterials = [];
+
         // 动画状态（X轴运动）
         this.currentX = -48;
         this.moveDirection = 1;
@@ -131,6 +135,7 @@ export class TrainWithLights {
         this.modelLoaded = true;
 
         this._createHeadlights();
+        this._createInteriorLights();
         this._createWindEffect();
         console.log('列车模型加载完成');
     }
@@ -183,6 +188,7 @@ export class TrainWithLights {
         this.modelLoaded = true;
 
         this._createHeadlights();
+        this._createInteriorLights();
         this._createWindEffect();
         console.log('使用简易示意火车模型，尺寸:', this.trainDimensions);
     }
@@ -287,6 +293,156 @@ export class TrainWithLights {
     }
 
     /**
+     * 创建车内灯光（窗户发光 + 内部点光源 + 尾部停车灯）
+     * 识别窗户材质并设置 emissive 发光，同时在车厢内放置点光源
+     * 尾部上方窗户不发光，中间窗户微光，其他窗户正常发光
+     * 尾部两个停车灯为红色
+     */
+    _createInteriorLights() {
+        if (!this.trainModel) return;
+
+        const dims = this.trainDimensions;
+        const s = this.params.trainScale;
+
+        // 窗户材质名称（MTL中深蓝色的材质）
+        const windowMaterialNames = ['Material__1775', 'Object016_mso', 'Material__79'];
+
+        // 尾部区域阈值：最后 1/8 的车身为尾部区域
+        const rearThreshold = dims.rearX + dims.length * 0.125;
+        // 窗户高度分界：上半部分为上方窗户，下半部分为中间窗户
+        const windowMidY = (dims.topY + dims.bottomY) * 0.5 + dims.height * 0.1;
+
+        // 遍历模型，找到窗户材质并按位置设置不同发光
+        this.trainModel.traverse((child) => {
+            if (!child.isMesh) return;
+
+            // 计算该 mesh 的中心位置
+            const meshBox = new THREE.Box3().setFromObject(child);
+            const meshCenter = meshBox.getCenter(new THREE.Vector3());
+            const isRear = meshCenter.x <= rearThreshold;
+            const isTop = meshCenter.y >= windowMidY;
+
+            const materials = Array.isArray(child.material) ? child.material : [child.material];
+            const newMats = [];
+
+            materials.forEach((mat) => {
+                if (!windowMaterialNames.includes(mat.name)) {
+                    newMats.push(mat);
+                    return;
+                }
+
+                // 克隆材质，避免影响其他 mesh
+                const clonedMat = mat.clone();
+
+                // 根据位置决定发光强度
+                let emissiveIntensity;
+                if (isRear && isTop) {
+                    // 尾部上方窗户：不发光
+                    emissiveIntensity = 0;
+                    clonedMat.emissive = new THREE.Color(0x000000);
+                } else if (isRear) {
+                    // 尾部中间窗户：微光
+                    emissiveIntensity = 0.6;
+                    clonedMat.emissive = new THREE.Color(0xffe4b5);
+                } else {
+                    // 其他窗户：正常发光
+                    emissiveIntensity = 2.5;
+                    clonedMat.emissive = new THREE.Color(0xffe4b5);
+                }
+
+                clonedMat.emissiveIntensity = this.headlightOn ? emissiveIntensity : 0;
+                clonedMat.transparent = true;
+                clonedMat.opacity = 0.92;
+
+                this.windowMaterials.push({
+                    material: clonedMat,
+                    zone: isRear ? (isTop ? 'rearTop' : 'rearMid') : 'normal',
+                    normalIntensity: emissiveIntensity
+                });
+
+                newMats.push(clonedMat);
+            });
+
+            if (newMats.length !== materials.length) {
+                // 没有 window 材质，不需要更新
+            } else {
+                child.material = newMats.length === 1 ? newMats[0] : newMats;
+            }
+        });
+
+        // 在车厢内部放置点光源，增强窗户透光效果
+        const bodyLength = dims.length;
+        const bodyHeight = dims.height;
+        const bodyWidth = dims.width;
+        const midY = (dims.topY + dims.bottomY) * 0.5 + bodyHeight * 0.15;
+        const lightSpacing = bodyLength * 0.18;
+        const lightCount = Math.max(3, Math.floor(bodyLength / lightSpacing));
+
+        for (let i = 0; i < lightCount; i++) {
+            const x = dims.rearX + (i + 0.5) * (bodyLength / lightCount);
+            // 尾部区域不放置白色灯光，只保留红色尾灯
+            if (x <= rearThreshold) continue;
+            for (const side of [-1, 1]) {
+                const light = new THREE.PointLight(
+                    0xffe8c8,
+                    this.headlightOn ? 1.2 : 0,
+                    bodyWidth * 1.5,
+                    2.0
+                );
+                light.position.set(x, midY, side * bodyWidth * 0.2);
+                this.trainModel.add(light);
+                this.interiorLights.push(light);
+            }
+        }
+
+        // 尾部两个红色停车灯
+        this._createTailLights();
+
+        console.log(`车内灯光创建完成: ${this.windowMaterials.length} 个窗户材质, ${this.interiorLights.length} 个内部光源`);
+    }
+
+    /**
+     * 创建尾部两个红色停车灯
+     */
+    _createTailLights() {
+        const dims = this.trainDimensions;
+        const s = this.params.trainScale;
+        const tailY = (dims.topY + dims.bottomY) * 0.5-0.35;
+        const tailX = dims.rearX + 22.3;  // 尾部端面内侧
+
+        for (const side of [-1, 1]) {
+            const z = side * dims.width * 0.2;
+
+            // 红色点光源
+            const light = new THREE.PointLight(
+                0xff2222,
+                this.headlightOn ? 2.0 : 0,
+                6 * s,
+                2.0
+            );
+            light.position.set(tailX, tailY, z);
+            this.trainModel.add(light);
+            this.tailLights = this.tailLights || [];
+            this.tailLights.push(light);
+
+            // 红色发光小球（可见的停车灯）
+            const bulbGeo = new THREE.SphereGeometry(0.06 * s, 12, 12);
+            const bulbMat = new THREE.MeshBasicMaterial({
+                color: 0xff1111,
+                transparent: true,
+                opacity: this.headlightOn ? 1.0 : 0.3
+            });
+            const bulb = new THREE.Mesh(bulbGeo, bulbMat);
+            bulb.position.set(tailX, tailY, z);
+            this.trainModel.add(bulb);
+            this.tailBulbs = this.tailBulbs || [];
+            this.tailBulbs.push({ mesh: bulb, material: bulbMat });
+        }
+
+        console.log('尾部停车灯创建完成');
+    }
+
+    /**
      * 创建空气动力学流场效果（GPU 驱动）
      * 构建基于势流近似的可视化系统：
      *   - 流线粒子沿参数化流线流动（车头分流→贴附车身→车尾汇聚）
@@ -350,6 +506,27 @@ export class TrainWithLights {
                 beam.material.opacity = targetBeamOpacity;
             });
         });
+
+        // 车内灯光联动
+        this.interiorLights.forEach((light) => {
+            light.intensity = this.headlightOn ? 1.2 : 0;
+        });
+
+        this.windowMaterials.forEach(({ material, zone, normalIntensity }) => {
+            material.emissiveIntensity = this.headlightOn ? normalIntensity : 0;
+        });
+
+        // 尾部停车灯：始终亮起，不受车灯开关影响
+        if (this.tailLights) {
+            this.tailLights.forEach((light) => {
+                light.intensity = 2.0;
+            });
+        }
+        if (this.tailBulbs) {
+            this.tailBulbs.forEach(({ material }) => {
+                material.opacity = 1.0;
+            });
+        }
     }
 
     /**
@@ -407,6 +584,10 @@ export class TrainWithLights {
         }
         this.headlights = [];
         this.beamLayers = [];
+        this.interiorLights = [];
+        this.windowMaterials = [];
+        this.tailLights = [];
+        this.tailBulbs = [];
         if (this.aeroFlow) {
             this.aeroFlow.dispose();
             this.aeroFlow = null;
