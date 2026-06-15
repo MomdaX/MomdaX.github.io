@@ -22,14 +22,52 @@ class TrackBuilder {
         this.animationId = null;
         this.lastTimestamp = 0;
 
+        // 弹射动画参数（电磁弹射效果）
+        this.launchParams = {
+            // 速度设置 (km/h 转 单位/秒，1单位=1米)
+            V_HIGH: 3500 * 1000 / 3600,  // 350 km/h ≈ 97.2 m/s
+            V_LOW: 25 * 1000 / 3600,    // 25 km/h ≈ 6.94 m/s
+            V_OVERSHOOT: 22 * 1000 / 3600, // 过冲速度 ≈ 6.11 m/s
+            
+            // 时间参数 (秒)
+            BRAKE_DURATION: 0.1,        // 骤降阶段持续时间
+            OVERSHOOT_DURATION: 0.04,   // 过冲回稳时间
+            SETTLE_DURATION: 10.0,        // 低速滑行稳定时间
+            ACCEL_DURATION: 5,        // 加速阶段持续时间
+            
+            // 曲线锐度 (p 值，p越大曲线越陡)
+            BRAKE_EXPONENT: 3,          // 指数曲线，接近垂直骤降
+            ACCEL_EXPONENT: 0.2,          // 加速曲线指数
+            
+            // 位置参数（X轴方向）
+            START_X: -600,              // 起点位置（远处）
+            BRAKE_X: -100,              // 开始减速位置（距离中心前100m）
+            CENTER_X: 0,                // 坐标系中心位置
+            EXIT_X: 500,                // 退出位置
+            
+            // 滑行距离（低速阶段行驶的距离）
+            CRUISE_DISTANCE: 66,        // 低速滑行距离
+        };
+        
+        // 弹射动画状态
+        this.launchState = {
+            phase: 'waiting',  // waiting, cruise, brake, overshoot, settle, cruising
+            phaseStartTime: 0,
+            totalElapsed: 0,
+            lastPosition: -150,// 上一个位置
+        };
+        
         // 动画状态
-        this.animationState = 'entering';
+        this.animationState = 'launching';
         this.pauseStartTime = 0;
-        this.pauseDuration = 5000;
+        this.pauseDuration = 5000;// 暂停时间
+        
+        // 列车运行控制（与车灯联动）
+        this.isRunning = true;  // 默认运行
 
         // 默认参数
         this.params = {
-            trackLength: 300,
+            trackLength: 1660,
             gauge: 2.0,
             railHalfWidth: 0.12,
             railHeight: 0.28,
@@ -40,9 +78,9 @@ class TrackBuilder {
             railColor: 0xb8c8dc,
             sleeperColor: 0x9c6e3e,
             trainSpeed: 0.05,
-            boundsMinZ: -100,
-            boundsMaxZ: 100,
-            cameraPos: { x: 20, y: 10, z: 50 },
+            boundsMinX: -100,
+            boundsMaxX: 100,
+            cameraPos: { x: 50, y: 10, z: 20 },  // 相机位置调整：X轴运动，相机在Z侧
             cameraTarget: { x: 0, y: 0.3, z: 0 }
         };
     }
@@ -50,6 +88,9 @@ class TrackBuilder {
     init(options = {}) {
         console.log('TrackBuilder init called');
         Object.assign(this.params, options);
+
+        // 恢复保存的状态（相机视角、车灯状态等）
+        this._restoreState();
 
         // 初始化场景
         this._initScene();
@@ -61,8 +102,138 @@ class TrackBuilder {
         this._animate();
 
         window.addEventListener('resize', () => this._onResize());
+        
+        // 监听相机变化，保存状态
+        this._setupCameraStateListener();
 
         return this;
+    }
+    
+    /**
+     * 设置相机状态监听器（当用户交互改变相机时保存状态）
+     */
+    _setupCameraStateListener() {
+        if (!this.controls) return;
+        
+        // 监听控制器变化事件
+        this.controls.addEventListener('change', () => {
+            this._saveCameraState();
+        });
+        
+        // 监听窗口关闭前保存状态
+        window.addEventListener('beforeunload', () => {
+            this._saveState();
+        });
+    }
+    
+    /**
+     * 保存所有状态到 localStorage
+     */
+    _saveState() {
+        const state = {
+            // 车灯状态
+            headlightOn: this.headlightOn,
+            isRunning: this.isRunning,
+            
+            // 相机状态
+            cameraPos: {
+                x: this.camera.position.x,
+                y: this.camera.position.y,
+                z: this.camera.position.z
+            },
+            cameraTarget: {
+                x: this.controls.target.x,
+                y: this.controls.target.y,
+                z: this.controls.target.z
+            },
+            
+            // 弹射动画状态
+            launchPhase: this.launchState.phase,
+            trainPosition: this.train ? this.train.getPosition() : this.launchParams.START_X,
+            
+            // 时间戳
+            timestamp: Date.now()
+        };
+        
+        localStorage.setItem('trainState', JSON.stringify(state));
+        console.log('[状态保存] 已保存当前状态');
+    }
+    
+    /**
+     * 保存相机状态（频繁调用时使用轻量保存）
+     */
+    _saveCameraState() {
+        const cameraState = {
+            cameraPos: {
+                x: this.camera.position.x,
+                y: this.camera.position.y,
+                z: this.camera.position.z
+            },
+            cameraTarget: {
+                x: this.controls.target.x,
+                y: this.controls.target.y,
+                z: this.controls.target.z
+            }
+        };
+        
+        localStorage.setItem('trainCameraState', JSON.stringify(cameraState));
+    }
+    
+    /**
+     * 从 localStorage 恢复状态
+     */
+    _restoreState() {
+        try {
+            // 恢复完整状态
+            const savedState = localStorage.getItem('trainState');
+            if (savedState) {
+                const state = JSON.parse(savedState);
+                
+                // 恢复车灯和运行状态
+                this.isRunning = state.isRunning !== undefined ? state.isRunning : true;
+                
+                // 恢复相机参数
+                if (state.cameraPos) {
+                    this.params.cameraPos = state.cameraPos;
+                }
+                if (state.cameraTarget) {
+                    this.params.cameraTarget = state.cameraTarget;
+                }
+                
+                // 恢复弹射动画状态
+                if (state.launchPhase) {
+                    this.launchState.phase = state.launchPhase;
+                }
+                if (state.trainPosition) {
+                    this.launchState.lastPosition = state.trainPosition;
+                }
+                
+                console.log('[状态恢复] 已恢复保存的状态:', state);
+            }
+            
+            // 恢复相机状态（优先使用最新的相机状态）
+            const savedCameraState = localStorage.getItem('trainCameraState');
+            if (savedCameraState) {
+                const cameraState = JSON.parse(savedCameraState);
+                if (cameraState.cameraPos) {
+                    this.params.cameraPos = cameraState.cameraPos;
+                }
+                if (cameraState.cameraTarget) {
+                    this.params.cameraTarget = cameraState.cameraTarget;
+                }
+            }
+        } catch (e) {
+            console.warn('[状态恢复] 恢复失败:', e);
+        }
+    }
+    
+    /**
+     * 清除保存的状态
+     */
+    clearSavedState() {
+        localStorage.removeItem('trainState');
+        localStorage.removeItem('trainCameraState');
+        console.log('[状态清除] 已清除保存的状态');
     }
 
     _initScene() {
@@ -123,7 +294,35 @@ class TrackBuilder {
         this.train = new TrainWithLights();
         this.train.loadTrain().then(() => {
             this.scene.add(this.train.getGroup());
+            
+            // 恢复车灯状态（如果之前保存的是关闭状态）
+            this._restoreHeadlightState();
         });
+    }
+    
+    /**
+     * 恢复车灯状态
+     */
+    _restoreHeadlightState() {
+        try {
+            const savedState = localStorage.getItem('trainState');
+            if (savedState) {
+                const state = JSON.parse(savedState);
+                
+                // 如果保存的状态是车灯关闭，则关闭车灯
+                if (state.headlightOn === false && this.train) {
+                    this.train.toggle();  // 切换到关闭状态
+                    console.log('[状态恢复] 车灯已恢复为关闭状态');
+                }
+                
+                // 恢复列车位置
+                if (state.trainPosition && this.train) {
+                    this.train.setPosition(state.trainPosition);
+                }
+            }
+        } catch (e) {
+            console.warn('[状态恢复] 车灯状态恢复失败:', e);
+        }
     }
 
     _setupLighting() {
@@ -166,13 +365,14 @@ class TrackBuilder {
         const halfLen = this.params.trackLength / 2;
         const gauge = this.params.gauge;
 
+        // 参考线（沿X轴方向，Z轴分布）
         const leftPoints = [
-            new THREE.Vector3(-gauge/2 - 0.55, -0.2, -halfLen - 0.4),
-            new THREE.Vector3(-gauge/2 - 0.55, -0.2, halfLen + 0.4)
+            new THREE.Vector3(-halfLen - 0.4, -0.2, -gauge/2 - 0.55),
+            new THREE.Vector3(halfLen + 0.4, -0.2, -gauge/2 - 0.55)
         ];
         const rightPoints = [
-            new THREE.Vector3(gauge/2 + 0.55, -0.2, -halfLen - 0.4),
-            new THREE.Vector3(gauge/2 + 0.55, -0.2, halfLen + 0.4)
+            new THREE.Vector3(-halfLen - 0.4, -0.2, gauge/2 + 0.55),
+            new THREE.Vector3(halfLen + 0.4, -0.2, gauge/2 + 0.55)
         ];
 
         this.scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(leftPoints), lineMat));
@@ -196,29 +396,31 @@ class TrackBuilder {
             roughness: 0.72
         });
 
-        // 铁轨
-        const railGeo = new THREE.BoxGeometry(p.railHalfWidth * 2, p.railHeight, p.trackLength);
+        // 铁轨（X轴方向延伸）
+        // 几何体：长度在X方向，高度在Y方向，宽度在Z方向
+        const railGeo = new THREE.BoxGeometry(p.trackLength, p.railHeight, p.railHalfWidth * 2);
         const railY = p.sleeperHeight + p.railHeight / 2 + 0.012;
 
         const leftRail = new THREE.Mesh(railGeo, railMat);
-        leftRail.position.set(-p.gauge / 2, railY, 0);
+        leftRail.position.set(0, railY, -p.gauge / 2);  // Z轴方向分布
         this.trackGroup.add(leftRail);
 
         const rightRail = new THREE.Mesh(railGeo, railMat);
-        rightRail.position.set(p.gauge / 2, railY, 0);
+        rightRail.position.set(0, railY, p.gauge / 2);  // Z轴方向分布
         this.trackGroup.add(rightRail);
 
-        // 枕木
-        const sleeperGeo = new THREE.BoxGeometry(p.sleeperWidth, p.sleeperHeight, p.sleeperDepth);
-        const startZ = -halfLen + (p.sleeperSpacing / 2);
-        const endZ = halfLen - (p.sleeperSpacing / 2);
-        const count = Math.floor((endZ - startZ) / p.sleeperSpacing) + 1;
+        // 枕木（沿X轴分布）
+        // 几何体：宽度在X方向(sleeperDepth)，高度在Y方向，长度在Z方向(sleeperWidth)
+        const sleeperGeo = new THREE.BoxGeometry(p.sleeperDepth, p.sleeperHeight, p.sleeperWidth);
+        const startX = -halfLen + (p.sleeperSpacing / 2);
+        const endX = halfLen - (p.sleeperSpacing / 2);
+        const count = Math.floor((endX - startX) / p.sleeperSpacing) + 1;
 
         for (let i = 0; i < count; i++) {
-            const zPos = startZ + i * p.sleeperSpacing;
-            if (Math.abs(zPos) > halfLen + 0.15) continue;
+            const xPos = startX + i * p.sleeperSpacing;
+            if (Math.abs(xPos) > halfLen + 0.15) continue;
             const sleeper = new THREE.Mesh(sleeperGeo, sleeperMat);
-            sleeper.position.set(0, p.sleeperHeight / 2, zPos);
+            sleeper.position.set(xPos, p.sleeperHeight / 2, 0);  // X轴方向分布
             this.trackGroup.add(sleeper);
         }
 
@@ -231,41 +433,157 @@ class TrackBuilder {
         this.lastTimestamp = now;
         if (delta < 0.005) delta = 0.016;
 
-        // 列车动画
         if (this.train?.modelLoaded) {
-            const currentZ = this.train.getPosition();
-
-            if (this.animationState === 'entering') {
-                const step = this.params.trainSpeed * delta * 60;
-                this.train.setPosition(currentZ + step);
-
-                if (currentZ >= 0) {
-                    this.train.setPosition(0);
-                    this.animationState = 'paused';
-                    this.pauseStartTime = now;
-                }
-            } else if (this.animationState === 'paused') {
-                if (now - this.pauseStartTime >= this.pauseDuration) {
-                    this.animationState = 'exiting';
-                }
-            } else if (this.animationState === 'exiting') {
-                const step = this.params.trainSpeed * delta * 60;
-                this.train.setPosition(currentZ + step);
-
-                if (currentZ >= this.params.boundsMaxZ + 10) {
-                    this.train.setPosition(this.params.boundsMinZ - 10);
-                    this.animationState = 'entering';
-                }
+            // 只有在运行状态下才更新列车动画
+            if (this.isRunning) {
+                this._updateLaunchAnimation(delta, now);
             }
-
-            // 更新风阻效果
-            const currentSpeed = this.animationState === 'paused' ? 0 : this.params.trainSpeed;
-            this.train.updateWindEffect(currentSpeed);
+            
+            // 风阻效果强度根据速度变化
+            // updateWindEffect 内部用 intensity = Math.min(1, speed / 0.08)
+            // 所以 speed=0.08 时 intensity=1, speed=0.012 时 intensity≈0.15
+            const lp = this.launchParams;
+            const state = this.launchState;
+            let windSpeed = 0;
+            
+            // 如果列车停止，风阻效果也停止
+            if (!this.isRunning) {
+                windSpeed = 0;
+            } else if (state.phase === 'cruise_in' || state.phase === 'cruise_out') {
+                windSpeed = 0.08; // 满强度风阻
+            } else if (state.phase === 'brake') {
+                // 骤降时，风阻急剧减弱
+                const brakeProgress = (now - state.phaseStartTime) / lp.BRAKE_DURATION;
+                windSpeed = 0.08 * (1.0 - Math.pow(brakeProgress, 2));
+            } else if (state.phase === 'accelerate') {
+                // 加速时，风阻急剧增强
+                const accelProgress = (now - state.phaseStartTime) / lp.ACCEL_DURATION;
+                windSpeed = 0.012 + (0.08 - 0.012) * Math.pow(accelProgress, 2);
+            } else if (state.phase === 'overshoot' || state.phase === 'settle') {
+                windSpeed = 0.012; // 低速时弱风阻
+            }
+            this.train.updateWindEffect(windSpeed);
         }
 
         this.controls.update();
         this.renderer.render(this.scene, this.camera);
-        this.animationId = requestAnimationFrame(() => this._animate());
+        this.animationId = requestAnimationFrame(() => this._animate());        
+    }
+
+    /**
+     * 弹射动画核心：速度曲线驱动的位移计算
+     * 3段式流程：高速入场 -> 减速滑行 -> 加速离开 -> 循环
+     * 列车沿X轴运动
+     */
+    _updateLaunchAnimation(delta, now) {
+        const lp = this.launchParams;
+        const state = this.launchState;
+        
+        // 初始化：设置起始位置（X轴）
+        if (state.phase === 'waiting') {
+            this.train.setPosition(lp.START_X);
+            state.phase = 'cruise_in';
+            state.phaseStartTime = now;
+            console.log('[弹射动画] 阶段1: 高速入场 (350 km/h)');
+            return;
+        }
+        
+        let velocity = 0;
+        let position = this.train.getPosition();
+        
+        switch (state.phase) {
+            case 'cruise_in': {
+                // 阶段1：高速入场，到达 BRAKE_X 位置开始减速
+                velocity = lp.V_HIGH;
+                
+                if (position >= lp.BRAKE_X) {
+                    // 到达减速位置，进入骤降阶段
+                    state.phase = 'brake';
+                    state.phaseStartTime = now;
+                    console.log('[弹射动画] 阶段2: 速度骤降');
+                }
+                break;
+            }
+            case 'brake': {
+                // 阶段2：骤降阶段 - 使用指数曲线实现近乎垂直的速度下降
+                const elapsed = (now - state.phaseStartTime) / 1000;
+                const progress = Math.min(1, elapsed / lp.BRAKE_DURATION);
+                const easedProgress = 1 - Math.pow(1 - progress, lp.BRAKE_EXPONENT);
+                velocity = lp.V_HIGH - (lp.V_HIGH - lp.V_LOW) * easedProgress;
+                
+                if (elapsed >= lp.BRAKE_DURATION) {
+                    velocity = lp.V_LOW;
+                    state.phase = 'overshoot';
+                    state.phaseStartTime = now;
+                    console.log('[弹射动画] 阶段3: 过冲回稳');
+                }
+                break;
+            }
+            case 'overshoot': {
+                // 阶段3：过冲瞬间降速然后回稳
+                const elapsed = (now - state.phaseStartTime) / 1000;
+                const progress = elapsed / lp.OVERSHOOT_DURATION;
+                if (progress < 1) {
+                    if (progress < 0.4) {
+                        const p = progress / 0.4;
+                        velocity = lp.V_LOW - (lp.V_LOW - lp.V_OVERSHOOT) * p;
+                    } else {
+                        const p = (progress - 0.4) / 0.6;
+                        const easeOut = 1 - Math.pow(1 - p, 2);
+                        velocity = lp.V_OVERSHOOT + (lp.V_LOW - lp.V_OVERSHOOT) * easeOut;
+                    }
+                } else {
+                    velocity = lp.V_LOW;
+                    state.phase = 'settle';
+                    state.phaseStartTime = now;
+                    console.log('[弹射动画] 阶段4: 低速滑行 (25 km/h)');
+                }
+                break;
+            }
+            case 'settle': {
+                // 阶段4：低速稳定滑行10秒
+                velocity = lp.V_LOW;
+                
+                const elapsed = (now - state.phaseStartTime) / 1000;
+                if (elapsed >= lp.SETTLE_DURATION) {
+                    state.phase = 'accelerate';
+                    state.phaseStartTime = now;
+                    console.log('[弹射动画] 阶段5: 加速离开');
+                }
+                break;
+            }
+            case 'accelerate': {
+                // 阶段5：加速离开，从 V_LOW 加速到 V_HIGH
+                const elapsed = (now - state.phaseStartTime) / 1000;
+                const progress = Math.min(1, elapsed / lp.ACCEL_DURATION);
+                const easedProgress = 1 - Math.pow(1 - progress, lp.ACCEL_EXPONENT);
+                velocity = lp.V_LOW + (lp.V_HIGH - lp.V_LOW) * easedProgress;
+                
+                if (elapsed >= lp.ACCEL_DURATION) {
+                    velocity = lp.V_HIGH;
+                    state.phase = 'cruise_out';
+                    state.phaseStartTime = now;
+                    console.log('[弹射动画] 阶段6: 高速离开 (350 km/h)');
+                }
+                break;
+            }
+            case 'cruise_out': {
+                // 阶段6：高速离开，直到完全离开场景
+                velocity = lp.V_HIGH;
+                
+                if (position >= lp.EXIT_X) {
+                    state.phase = 'waiting';
+                    this.train.setPosition(lp.START_X);
+                    console.log('[弹射动画] 循环：回到起点');
+                    return;
+                }
+                break;
+            }
+        }
+        
+        position += velocity * delta;
+        this.train.setPosition(position);
+        this.train.setVelocity(velocity);
     }
 
     _onResize() {
@@ -283,12 +601,38 @@ class TrackBuilder {
         return this.train?.headlightOn ?? true;
     }
 
-    /** 切换车灯 */
+    /** 切换车灯（同时控制列车运行） */
     toggleHeadlights() {
         if (this.train) {
             const newState = this.train.toggle();
             console.log('车灯状态:', newState ? '开启' : '关闭');
+            
+            // 车灯开启时列车运行，关闭时列车停止
+            this.isRunning = newState;
+            console.log('列车运行状态:', newState ? '运行' : '停止');
+            
+            // 保存状态
+            this._saveState();
         }
+    }
+    
+    /** 启动列车 */
+    startTrain() {
+        this.isRunning = true;
+        console.log('列车启动');
+        this._saveState();
+    }
+    
+    /** 停止列车 */
+    stopTrain() {
+        this.isRunning = false;
+        console.log('列车停止');
+        this._saveState();
+    }
+    
+    /** 获取列车运行状态 */
+    get trainRunning() {
+        return this.isRunning;
     }
 
     /** 设置列车速度 */
@@ -335,6 +679,99 @@ class TrackBuilder {
             this.train.setWindEffectEnabled(!this.train.windEffectEnabled);
             console.log('风阻效果:', this.train.windEffectEnabled ? '开启' : '关闭');
         }
+    }
+
+    // ============ 弹射动画 API ============
+
+    /**
+     * 获取当前弹射动画状态
+     * @returns {Object} 包含 phase, velocity, position 等信息
+     */
+    getLaunchState() {
+        const lp = this.launchParams;
+        const state = this.launchState;
+        return {
+            phase: state.phase,
+            velocity: this.train ? this.train.getVelocity?.() ?? 0 : 0,
+            position: this.train ? this.train.getPosition() : lp.START_Z,
+            // 转换显示 km/h
+            velocityKmh: this.train ? (this.train.getVelocity?.() ?? 0) * 3.6 : 0
+        };
+    }
+
+    /**
+     * 设置弹射动画参数
+     * @param {Object} launchConfig 配置对象，可选字段：
+     *   - V_HIGH: 高速巡航速度 (km/h)
+     *   - V_LOW: 低速滑行速度 (km/h)
+     *   - BRAKE_DURATION: 骤降阶段持续时间 (秒)
+     *   - OVERSHOOT_DURATION: 过冲回稳时间 (秒)
+     *   - SETTLE_DURATION: 低速滑行持续时间 (秒)
+     *   - ACCEL_DURATION: 加速阶段持续时间 (秒)
+     *   - BRAKE_EXPONENT: 骤降曲线锐度 (越大越陡)
+     *   - ACCEL_EXPONENT: 加速曲线锐度 (越大越陡)
+     *   - START_X: 起点位置（X轴）
+     *   - BRAKE_X: 开始减速位置（X轴）
+     *   - EXIT_X: 退出位置（X轴）
+     * @example
+     *   builder.configureLaunch({
+     *     V_HIGH: 500,
+     *     BRAKE_DURATION: 0.08,
+     *     BRAKE_X: -80,
+     *     SETTLE_DURATION: 8
+     *   });
+     */
+    configureLaunch(launchConfig = {}) {
+        const lp = this.launchParams;
+        if (launchConfig.V_HIGH !== undefined) {
+            lp.V_HIGH = launchConfig.V_HIGH * 1000 / 3600;
+        }
+        if (launchConfig.V_LOW !== undefined) {
+            lp.V_LOW = launchConfig.V_LOW * 1000 / 3600;
+            lp.V_OVERSHOOT = launchConfig.V_LOW * 0.88 * 1000 / 3600;
+        }
+        if (launchConfig.BRAKE_DURATION !== undefined) {
+            lp.BRAKE_DURATION = launchConfig.BRAKE_DURATION;
+        }
+        if (launchConfig.OVERSHOOT_DURATION !== undefined) {
+            lp.OVERSHOOT_DURATION = launchConfig.OVERSHOOT_DURATION;
+        }
+        if (launchConfig.SETTLE_DURATION !== undefined) {
+            lp.SETTLE_DURATION = launchConfig.SETTLE_DURATION;
+        }
+        if (launchConfig.ACCEL_DURATION !== undefined) {
+            lp.ACCEL_DURATION = launchConfig.ACCEL_DURATION;
+        }
+        if (launchConfig.BRAKE_EXPONENT !== undefined) {
+            lp.BRAKE_EXPONENT = launchConfig.BRAKE_EXPONENT;
+        }
+        if (launchConfig.ACCEL_EXPONENT !== undefined) {
+            lp.ACCEL_EXPONENT = launchConfig.ACCEL_EXPONENT;
+        }
+        if (launchConfig.START_X !== undefined) {
+            lp.START_X = launchConfig.START_X;
+        }
+        if (launchConfig.BRAKE_X !== undefined) {
+            lp.BRAKE_X = launchConfig.BRAKE_X;
+        }
+        if (launchConfig.EXIT_X !== undefined) {
+            lp.EXIT_X = launchConfig.EXIT_X;
+        }
+        console.log('[弹射动画] 参数已更新:', lp);
+        return this;
+    }
+
+    /**
+     * 重置弹射动画到初始状态
+     */
+    resetLaunch() {
+        this.launchState.phase = 'waiting';
+        this.launchState.phaseStartTime = 0;
+        this.launchState.totalElapsed = 0;
+        if (this.train) {
+            this.train.setPosition(this.launchParams.START_X);
+        }
+        console.log('[弹射动画] 已重置');
     }
 }
 
