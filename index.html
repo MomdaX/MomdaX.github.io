@@ -219,6 +219,19 @@
             
             window.railTrackSystem = railway;
             
+            // 恢复保存的列车模型类型
+            (async () => {
+                try {
+                    const savedTrainModel = localStorage.getItem('trainModelType');
+                    if (savedTrainModel === '16' && railway.train) {
+                        console.log('[初始化] 恢复16节车厢模型');
+                        await railway.switchTrainModel('16');
+                    }
+                } catch (e) {
+                    console.warn('[初始化] 模型恢复失败:', e);
+                }
+            })();
+            
             // 加载汽车模型
             const car = new CarModel({
                 scale: 0.6,

@@ -681,6 +681,45 @@ class TrackBuilder {
         }
     }
 
+    /** 切换列车模型（8节/16节） */
+    async switchTrainModel(modelType) {
+        if (!this.train) {
+            console.error('列车未初始化');
+            return;
+        }
+        
+        const currentType = this.train.getModelType();
+        if (currentType === modelType) {
+            console.log(`已经是 ${modelType} 节车厢模型，无需切换`);
+            return modelType;
+        }
+        
+        // 暂停动画
+        const wasRunning = this.isRunning;
+        this.isRunning = false;
+        
+        try {
+            await this.train.switchModel(modelType);
+            
+            // 保存状态
+            this._saveState();
+            
+            console.log(`[TrackBuilder] 列车模型已切换为 ${modelType} 节车厢`);
+        } catch (e) {
+            console.error('模型切换失败:', e);
+        }
+        
+        // 恢复运行状态
+        this.isRunning = wasRunning;
+        
+        return modelType;
+    }
+    
+    /** 获取当前列车模型类型 */
+    getTrainModelType() {
+        return this.train ? this.train.getModelType() : '8';
+    }
+
     // ============ 弹射动画 API ============
 
     /**

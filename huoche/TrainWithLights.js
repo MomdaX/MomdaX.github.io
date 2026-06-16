@@ -133,6 +133,9 @@ export class TrainWithLights {
         this.trainGroup.renderOrder = 10;
         this.trainGroup.position.x = this.currentX;  // X轴位置
         this.modelLoaded = true;
+        
+        // 保存当前模型类型（从路径中提取）
+        this.currentModelType = this.params.trainObj.includes('huoche16') ? '16' : '8';
 
         this._createHeadlights();
         this._createInteriorLights();
@@ -186,6 +189,9 @@ export class TrainWithLights {
         this.trainGroup.renderOrder = 10;
         this.trainGroup.position.x = this.currentX;  // X轴位置
         this.modelLoaded = true;
+        
+        // 保存当前模型类型（备用模型默认为8节）
+        this.currentModelType = '8';
 
         this._createHeadlights();
         this._createInteriorLights();
@@ -570,6 +576,17 @@ export class TrainWithLights {
      * 清理资源
      */
     dispose() {
+        this._clearTrainResources();
+        if (this.aeroFlow) {
+            this.aeroFlow.dispose();
+            this.aeroFlow = null;
+        }
+    }
+    
+    /**
+     * 清理列车相关资源（不清理风阻效果）
+     */
+    _clearTrainResources() {
         if (this.trainModel) {
             this.trainModel.traverse((child) => {
                 if (child.geometry) child.geometry.dispose();
@@ -581,6 +598,8 @@ export class TrainWithLights {
                     }
                 }
             });
+            this.trainGroup.remove(this.trainModel);
+            this.trainModel = null;
         }
         this.headlights = [];
         this.beamLayers = [];
@@ -588,10 +607,58 @@ export class TrainWithLights {
         this.windowMaterials = [];
         this.tailLights = [];
         this.tailBulbs = [];
-        if (this.aeroFlow) {
-            this.aeroFlow.dispose();
-            this.aeroFlow = null;
+        this.modelLoaded = false;
+    }
+    
+    /**
+     * 切换列车模型（8节/16节）
+     * @param {string} modelType - '8' 或 '16'
+     * @returns {Promise} 模型加载完成后 resolve
+     */
+    async switchModel(modelType) {
+        if (modelType !== '8' && modelType !== '16') {
+            console.error('Invalid model type:', modelType);
+            return;
         }
+        
+        console.log(`[列车切换] 开始切换到 ${modelType} 节车厢模型`);
+        
+        // 保存当前状态
+        const currentX = this.currentX;
+        const currentVelocity = this._velocity || 0;
+        const headlightOn = this.headlightOn;
+        const windEnabled = this.windEffectEnabled;
+        
+        // 清理旧资源
+        this._clearTrainResources();
+        
+        // 更新模型路径
+        this.params.trainMtl = `huoche/huoche${modelType}.mtl`;
+        this.params.trainObj = `huoche/huoche${modelType}.obj`;
+        
+        // 加载新模型
+        await this.loadTrain();
+        
+        // 恢复状态
+        this.setPosition(currentX);
+        this.setVelocity(currentVelocity);
+        this.setHeadlightOn(headlightOn);
+        this.setWindEffectEnabled(windEnabled);
+        
+        // 保存当前模型类型
+        this.currentModelType = modelType;
+        
+        console.log(`[列车切换] 已切换到 ${modelType} 节车厢模型`);
+        
+        return modelType;
+    }
+    
+    /**
+     * 获取当前模型类型
+     * @returns {string} '8' 或 '16'
+     */
+    getModelType() {
+        return this.currentModelType || '8';
     }
 }
 
