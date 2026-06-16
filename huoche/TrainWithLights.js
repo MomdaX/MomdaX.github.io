@@ -786,8 +786,8 @@ class AeroFlowField {
                 uIntensity: { value: 0 },
                 uVisible: { value: 1 },
                 uLineCount: { value: this.streamlines.length },
-                uColorA: { value: new THREE.Color(0x66ddff) }, // 青蓝（前段高速）
-                uColorB: { value: new THREE.Color(0x2a6cff) }  // 深蓝（尾流）
+                uColorA: { value: new THREE.Color(0xeeeeee) }, // 白灰（前段）
+                uColorB: { value: new THREE.Color(0x888888) }  // 深灰（尾流）
             },
             vertexShader: /* glsl */`
                 attribute float aLineId;
@@ -831,10 +831,10 @@ class AeroFlowField {
                 varying float vPulse;
 
                 void main() {
-                    // 颜色：前段（aAlong 小）偏青亮，后段偏深蓝
+                    // 颜色：前段白亮，后段深灰
                     vec3 baseCol = mix(uColorA, uColorB, clamp(vAlong, 0.0, 1.0));
-                    // 脉冲提亮
-                    vec3 col = baseCol + vPulse * 0.9 * vec3(0.8, 0.95, 1.0);
+                    // 脉冲提亮（白灰烟雾）
+                    vec3 col = baseCol + vPulse * 0.6 * vec3(1.0, 1.0, 1.0);
                     // 基础流线透明度 + 脉冲叠加
                     float alpha = (0.10 + 0.55 * vPulse) * uIntensity;
                     alpha *= uVisible;
@@ -911,7 +911,7 @@ class AeroFlowField {
             const li = Math.floor(Math.random() * this.streamlines.length);
             aLineId[i] = li;
             aPhase[i] = Math.random();
-            aSize[i] = (0.6 + Math.random() * 1.6) * s * 1.3;
+            aSize[i] = (0.3 + Math.random() * 1) * s * 0.8;
             aSeed[i] = Math.random();
             positions[i * 3 + 0] = 0;
             positions[i * 3 + 1] = 0;
@@ -936,9 +936,9 @@ class AeroFlowField {
                 uTex: { value: tex },
                 uTexSize: { value: this._slTotal },
                 uPixelRatio: { value: window.devicePixelRatio || 1 },
-                uColorHead: { value: new THREE.Color(0xbff4ff) }, // 车头滞止区亮青
-                uColorMid: { value: new THREE.Color(0x3aa6ff) },  // 车身贴附蓝
-                uColorTail: { value: new THREE.Color(0x1240aa) }  // 尾涡深蓝
+                uColorHead: { value: new THREE.Color(0xf0f0f0) }, // 车头白色烟雾
+                uColorMid: { value: new THREE.Color(0xcccccc) },  // 车身浅灰
+                uColorTail: { value: new THREE.Color(0x777777) }  // 尾涡深灰
             }
         });
 
@@ -1031,7 +1031,7 @@ class AeroFlowField {
                 float core = smoothstep(0.5, 0.0, r);
                 float glow = pow(core, 2.2);
 
-                // 颜色：前段亮青 → 中段蓝 → 尾段深蓝
+                // 颜色：前段白 → 中段浅灰 → 尾段深灰
                 vec3 col;
                 if (vAlong < 0.5) {
                     col = mix(uColorHead, uColorMid, vAlong / 0.5);
@@ -1062,10 +1062,10 @@ class AeroFlowField {
         canvas.width = canvas.height = 128;
         const ctx = canvas.getContext('2d');
         const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-        g.addColorStop(0, 'rgba(200,245,255,0.95)');
-        g.addColorStop(0.3, 'rgba(120,210,255,0.55)');
-        g.addColorStop(0.7, 'rgba(40,120,220,0.18)');
-        g.addColorStop(1, 'rgba(0,40,120,0)');
+        g.addColorStop(0, 'rgba(240,240,240,0.95)');
+        g.addColorStop(0.3, 'rgba(200,200,200,0.55)');
+        g.addColorStop(0.7, 'rgba(140,140,140,0.18)');
+        g.addColorStop(1, 'rgba(80,80,80,0)');
         ctx.fillStyle = g;
         ctx.fillRect(0, 0, 128, 128);
         const tex = new THREE.CanvasTexture(canvas);
@@ -1094,9 +1094,9 @@ class AeroFlowField {
         canvas.width = canvas.height = 128;
         const ctx = canvas.getContext('2d');
         const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-        g.addColorStop(0, 'rgba(90,150,255,0.6)');
-        g.addColorStop(0.5, 'rgba(30,70,180,0.25)');
-        g.addColorStop(1, 'rgba(10,20,80,0)');
+        g.addColorStop(0, 'rgba(180,180,180,0.6)');
+        g.addColorStop(0.5, 'rgba(110,110,110,0.25)');
+        g.addColorStop(1, 'rgba(60,60,60,0)');
         ctx.fillStyle = g;
         ctx.fillRect(0, 0, 128, 128);
         const tex = new THREE.CanvasTexture(canvas);

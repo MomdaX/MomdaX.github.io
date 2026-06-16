@@ -262,9 +262,25 @@ export async function initMusicPlayer() {
     
     // 车灯控制按钮
     const headlightBtn = document.getElementById('headlightBtn');
-    if (window.railTrackSystem && window.railTrackSystem.headlightOn) {
+    
+    // 从 localStorage 恢复按钮状态
+    try {
+        const savedState = localStorage.getItem('trainState');
+        if (savedState) {
+            const state = JSON.parse(savedState);
+            if (state.headlightOn === false) {
+                headlightBtn.classList.remove('active');
+            } else {
+                headlightBtn.classList.add('active');
+            }
+        } else {
+            // 默认状态：车灯开启
+            headlightBtn.classList.add('active');
+        }
+    } catch (e) {
         headlightBtn.classList.add('active');
     }
+    
     headlightBtn.addEventListener('click', () => {
         if (window.railTrackSystem) {
             window.railTrackSystem.toggleHeadlights();
