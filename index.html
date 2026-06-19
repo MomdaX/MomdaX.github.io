@@ -846,14 +846,12 @@
             };
 
             // ---- 事件监听 ----
-            // 分组标签点击：展开/收起（保持至少一个分组展开）
+            // 分组标签点击：展开/收起（恢复默认设置行不参与折叠）
             const groupLabels = document.querySelectorAll('#settings-panel .setting-group-label');
             groupLabels.forEach(label => {
                 label.addEventListener('click', () => {
                     const group = label.closest('.setting-group');
                     if (!group) return;
-                    const isCollapsed = group.classList.contains('collapsed');
-                    // 直接 toggle：展开变收起，收起变展开
                     group.classList.toggle('collapsed');
                 });
             });
