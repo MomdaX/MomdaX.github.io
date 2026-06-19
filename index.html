@@ -572,6 +572,15 @@
             </div>
         </div>
 
+        <div class="setting-group">
+            <div class="setting-group-label">相机</div>
+            <div class="setting-row" data-key="reset-camera">
+                <span class="setting-icon">📷</span>
+                <span class="setting-label">视角复位</span>
+                <span class="setting-hint">点我复位视角</span>
+            </div>
+        </div>
+
         <div class="setting-group" style="margin-top:auto;padding-top:16px;border-top:1px solid rgba(255,255,255,0.08);">
             <div class="setting-row" data-key="reset" style="justify-content:center;opacity:0.6;">
                 <span class="setting-icon">🔄</span>
@@ -769,6 +778,12 @@
                     if (railway.train) railway.train.setWindEffectEnabled(true);
                     if (window.carModel) window.carModel.getGroup().visible = true;
                     saveSettings();
+                    return;
+                }
+
+                // 视角复位
+                if (key === 'reset-camera') {
+                    railway.resetCamera();
                     return;
                 }
 
