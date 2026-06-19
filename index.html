@@ -265,6 +265,33 @@
             letter-spacing: 2px;
             padding: 8px 4px 4px;
             margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            user-select: none;
+        }
+        #settings-panel .setting-group-label:hover {
+            color: rgba(255,255,255,0.65);
+        }
+        #settings-panel .setting-group-label .collapse-arrow {
+            display: inline-block;
+            transition: transform 0.3s ease;
+            font-size: 0.65rem;
+            opacity: 0.5;
+        }
+        #settings-panel .setting-group.collapsed .setting-group-label .collapse-arrow {
+            transform: rotate(-90deg);
+        }
+        #settings-panel .setting-group .setting-group-body {
+            overflow: hidden;
+            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+            max-height: 600px;
+            opacity: 1;
+        }
+        #settings-panel .setting-group.collapsed .setting-group-body {
+            max-height: 0;
+            opacity: 0;
         }
 
         /* 开关行 */
@@ -476,7 +503,11 @@
         <div class="panel-title">⚙️ 设置</div>
 
         <div class="setting-group">
-            <div class="setting-group-label">模型</div>
+            <div class="setting-group-label">
+                <span>模型</span>
+                <span class="collapse-arrow">▼</span>
+            </div>
+            <div class="setting-group-body">
             <div class="setting-row info-row">
                 <div style="color:rgba(255,255,255,0.5);font-size:0.75rem;">动车组编组</div>
                 <div class="model-selector">
@@ -484,10 +515,15 @@
                     <button class="model-btn" data-model="16">16 节</button>
                 </div>
             </div>
+            </div>
         </div>
 
         <div class="setting-group">
-            <div class="setting-group-label">视图</div>
+            <div class="setting-group-label">
+                <span>视图</span>
+                <span class="collapse-arrow">▼</span>
+            </div>
+            <div class="setting-group-body">
             <div class="setting-row" data-key="immersive">
                 <span class="setting-icon">🔍</span>
                 <span class="setting-label">沉浸模式</span>
@@ -512,10 +548,15 @@
                     <span class="toggle-slider"></span>
                 </label>
             </div>
+            </div>
         </div>
 
         <div class="setting-group">
-            <div class="setting-group-label">场景</div>
+            <div class="setting-group-label">
+                <span>场景</span>
+                <span class="collapse-arrow">▼</span>
+            </div>
+            <div class="setting-group-body">
             <div class="setting-row" data-key="car">
                 <span class="setting-icon">🚗</span>
                 <span class="setting-label">SU7 汽车模型</span>
@@ -524,10 +565,15 @@
                     <span class="toggle-slider"></span>
                 </label>
             </div>
+            </div>
         </div>
 
         <div class="setting-group">
-            <div class="setting-group-label">气流</div>
+            <div class="setting-group-label">
+                <span>气流</span>
+                <span class="collapse-arrow">▼</span>
+            </div>
+            <div class="setting-group-body">
             <div class="setting-row" data-key="wind">
                 <span class="setting-icon">💨</span>
                 <span class="setting-label">风阻流线</span>
@@ -544,10 +590,15 @@
                     <span class="toggle-slider"></span>
                 </label>
             </div>
+            </div>
         </div>
 
         <div class="setting-group">
-            <div class="setting-group-label">风阻参数</div>
+            <div class="setting-group-label">
+                <span>风阻参数</span>
+                <span class="collapse-arrow">▼</span>
+            </div>
+            <div class="setting-group-body">
             <div class="setting-row info-row">
                 <div style="display:flex;justify-content:space-between;width:100%;">
                     <span style="color:rgba(255,255,255,0.5);font-size:0.75rem;">风阻强度</span>
@@ -581,10 +632,15 @@
                     <span style="color:rgba(255,255,255,0.3);font-size:0.65rem;">20</span>
                 </div>
             </div>
+            </div>
         </div>
 
         <div class="setting-group">
-            <div class="setting-group-label">速度</div>
+            <div class="setting-group-label">
+                <span>速度</span>
+                <span class="collapse-arrow">▼</span>
+            </div>
+            <div class="setting-group-body">
             <div class="setting-row info-row">
                 <div style="display:flex;justify-content:space-between;width:100%;">
                     <span style="color:rgba(255,255,255,0.5);font-size:0.75rem;">高速巡航</span>
@@ -607,14 +663,20 @@
                     <span style="color:rgba(255,255,255,0.3);font-size:0.65rem;">80</span>
                 </div>
             </div>
+            </div>
         </div>
 
         <div class="setting-group">
-            <div class="setting-group-label">相机</div>
+            <div class="setting-group-label">
+                <span>相机</span>
+                <span class="collapse-arrow">▼</span>
+            </div>
+            <div class="setting-group-body">
             <div class="setting-row" data-key="reset-camera">
                 <span class="setting-icon">📷</span>
                 <span class="setting-label">视角复位</span>
                 <span class="setting-hint">点我复位视角</span>
+            </div>
             </div>
         </div>
 
