@@ -855,7 +855,6 @@
             const groupLabels = document.querySelectorAll('#settings-panel .setting-group-label');
             groupLabels.forEach(label => {
                 label.addEventListener('click', (e) => {
-                    // 阻止事件冒泡到父级 e.target.closest('.setting-row')
                     e.stopPropagation();
                     const group = label.closest('.setting-group');
                     if (!group) return;
