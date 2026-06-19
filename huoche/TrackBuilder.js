@@ -655,12 +655,12 @@ class TrackBuilder {
         this.params.trainSpeed = Math.max(0.015, Math.min(0.12, speed));
     }
 
-    /** 重置相机 */
+    /** 重置相机到默认视角 */
     resetCamera() {
-        const p = this.params;
-        this.camera.position.set(p.cameraPos.x, p.cameraPos.y, p.cameraPos.z);
-        this.controls.target.set(p.cameraTarget.x, p.cameraTarget.y, p.cameraTarget.z);
+        this.camera.position.set(50, 10, 20);
+        this.controls.target.set(0, 0.3, 0);
         this.controls.update();
+        this._saveCameraState();
     }
 
     /** 重建轨道 */
