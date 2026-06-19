@@ -861,6 +861,9 @@
             // 延迟应用（等模型加载）
             setTimeout(applySpeedSettings, 3000);
 
+            // 汽车模型初始可见性（修复刷新后设置不生效的 BUG）
+            if (window.carModel) window.carModel.getGroup().visible = settings.car;
+
             // 暴露设置接口
             window.trainSettings = { settings, applySetting, saveSettings };
 
