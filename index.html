@@ -848,10 +848,12 @@
             };
 
             // ---- 事件监听 ----
-            // 分组标签点击：展开/收起（恢复默认设置行不参与折叠）
+            // 分组标签点击：展开/收起
             const groupLabels = document.querySelectorAll('#settings-panel .setting-group-label');
             groupLabels.forEach(label => {
-                label.addEventListener('click', () => {
+                label.addEventListener('click', (e) => {
+                    // 阻止事件冒泡到父级 e.target.closest('.setting-row')
+                    e.stopPropagation();
                     const group = label.closest('.setting-group');
                     if (!group) return;
                     group.classList.toggle('collapsed');
