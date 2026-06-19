@@ -42,8 +42,6 @@ export class CarModel {
         
         // 设置 meshopt 解码器
         this.loader.setMeshoptDecoder(MeshoptDecoder);
-        
-        console.log('CarModel loader initialized with meshopt support');
     }
 
     /**
@@ -58,7 +56,6 @@ export class CarModel {
                 resolve();
             }, undefined, () => {
                 // 加载失败时跳过
-                console.log('AO map not found, skipping');
                 resolve();
             });
         });
@@ -83,7 +80,6 @@ export class CarModel {
                 (xhr) => {
                     const percent = (xhr.loaded / xhr.total * 100);
                     onProgress?.(percent);
-                    console.log(`汽车模型加载进度: ${percent.toFixed(1)}%`);
                 },
                 (error) => {
                     console.error('汽车模型加载失败:', error);
@@ -117,8 +113,6 @@ export class CarModel {
 
         // 设置材质
         this._setupMaterials();
-
-        console.log('汽车模型加载完成');
     }
 
     /**
@@ -176,8 +170,6 @@ export class CarModel {
                 item.receiveShadow = true;
             }
         });
-        
-        console.log('材质设置完成（使用原项目配置）');
     }
 
     /**

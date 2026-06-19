@@ -557,14 +557,6 @@
                 <span class="collapse-arrow">▼</span>
             </div>
             <div class="setting-group-body">
-            <div class="setting-row" data-key="car">
-                <span class="setting-icon">🚗</span>
-                <span class="setting-label">SU7 汽车模型</span>
-                <label class="toggle-switch">
-                    <input type="checkbox" id="toggle-car" checked>
-                    <span class="toggle-slider"></span>
-                </label>
-            </div>
             </div>
         </div>
 
@@ -715,9 +707,8 @@
     {
         "imports": {
             "three": "./huoche/three.module.js",
-            "three/addons/loaders/GLTFLoader.js": "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/loaders/GLTFLoader.js",
-            "three/addons/loaders/DRACOLoader.js": "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/loaders/DRACOLoader.js",
-            "three/addons/libs/meshopt_decoder.module.js": "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/libs/meshopt_decoder.module.js"
+        <!-- three/addons 不再需要（已移除 SU7 汽车模型） -->
+
         }
     }
     </script>
@@ -725,7 +716,6 @@
     <!-- 主脚本 -->
     <script type="module">
         import TrackBuilder from './huoche/TrackBuilder.js';
-        import CarModel from './sm_car/CarModel.js';
 
         window.addEventListener('DOMContentLoaded', async () => {
             // ========== 加载场景 ==========
@@ -750,15 +740,6 @@
                     }
                 } catch (e) {}
             })();
-
-            const car = new CarModel({
-                scale: 0.6,
-                position: { x: 10, y: 0.3, z: 0 },
-                rotation: { x: 0, y: Math.PI, z: 0 }
-            });
-            await car.loadModel();
-            railway.scene.add(car.getGroup());
-            window.carModel = car;
 
             // 音乐
             (async () => {
@@ -796,7 +777,6 @@
                 modelType: '8',
                 particles: true,
                 hearts: true,
-                car: true,
                 wind: true,
                 headlight: true,
                 immersive: false,
@@ -838,7 +818,6 @@
             const syncUI = () => {
                 $$('toggle-particles').checked = settings.particles;
                 $$('toggle-hearts').checked = settings.hearts;
-                $$('toggle-car').checked = settings.car;
                 $$('toggle-wind').checked = settings.wind;
                 $$('toggle-headlight').checked = settings.headlight;
                 $$('toggle-immersive').checked = settings.immersive;
@@ -884,7 +863,6 @@
                         if (railway.getTrainModelType() !== '8') railway.switchTrainModel('8');
                     }
                     if (railway.train) railway.train.setWindEffectEnabled(true);
-                    if (window.carModel) window.carModel.getGroup().visible = true;
                     applyWindParams();
                     saveSettings();
                     return;
@@ -919,10 +897,6 @@
                     case 'hearts':
                         settings.hearts = value;
                         setHearts(value);
-                        break;
-                    case 'car':
-                        settings.car = value;
-                        if (window.carModel) window.carModel.getGroup().visible = value;
                         break;
                     case 'wind':
                         settings.wind = value;
@@ -1019,9 +993,6 @@
             };
             // 延迟应用（等模型加载）
             setTimeout(applyDelayedSettings, 3000);
-
-            // 汽车模型初始可见性（修复刷新后设置不生效的 BUG）
-            if (window.carModel) window.carModel.getGroup().visible = settings.car;
 
             // 暴露设置接口
             window.trainSettings = { settings, applySetting, saveSettings };
