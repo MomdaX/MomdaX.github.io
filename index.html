@@ -285,13 +285,14 @@
         }
         #settings-panel .setting-group .setting-group-body {
             overflow: hidden;
-            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+            transition: max-height 0.15s ease, opacity 0.15s ease;
             max-height: 600px;
             opacity: 1;
         }
         #settings-panel .setting-group.collapsed .setting-group-body {
             max-height: 0;
             opacity: 0;
+            pointer-events: none;
         }
 
         /* 开关行 */
