@@ -463,25 +463,21 @@
         body.immersive .music-player,
         body.immersive #particle-canvas,
         body.immersive .bg_heart,
-        body.immersive #preloader {
+        body.immersive #preloader,
+        body.immersive #settings-toggle {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transition: opacity 0.4s ease;
+        }
+        /* 沉浸模式下设置面板也隐藏 */
+        body.immersive #settings-panel,
+        body.immersive #settings-overlay {
             opacity: 0 !important;
             pointer-events: none !important;
             transition: opacity 0.4s ease;
         }
 
-        /* 沉浸模式下设置按钮变小变透明 */
-        body.immersive #settings-toggle {
-            width: 34px;
-            height: 34px;
-            background: rgba(20,28,40,0.25);
-            border-color: rgba(255,255,255,0.12);
-            opacity: 0.4;
-        }
-        body.immersive #settings-toggle:hover {
-            opacity: 0.85;
-            background: rgba(40,50,70,0.55);
-            border-color: rgba(255,255,255,0.35);
-        }
+        /* 沉浸模式下设置按钮变小变透明（已随整个按钮隐藏，去掉这部分） */
 
         /* 有背景特效时 canvas 应该是透明的，让背景特效可见 */
         #train-canvas { background: transparent; }
@@ -906,6 +902,8 @@
                 switch (key) {
                     case 'immersive':
                         settings.immersive = value;
+                        // 沉浸模式下关闭设置面板
+                        if (value && isOpen()) closePanel();
                         break;
                     case 'particles':
                         settings.particles = value;
