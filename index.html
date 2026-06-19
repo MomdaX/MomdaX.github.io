@@ -846,34 +846,15 @@
             };
 
             // ---- 事件监听 ----
-            // 分组标签点击：展开/收起（只收起其他分组，不收起自身）
+            // 分组标签点击：展开/收起（保持至少一个分组展开）
             const groupLabels = document.querySelectorAll('#settings-panel .setting-group-label');
             groupLabels.forEach(label => {
                 label.addEventListener('click', () => {
                     const group = label.closest('.setting-group');
                     if (!group) return;
                     const isCollapsed = group.classList.contains('collapsed');
-                    if (isCollapsed) {
-                        // 仅展开当前分组，不收起其他
-                        group.classList.remove('collapsed');
-                    } else {
-                        // 收起其他已展开的分组，再收起当前
-                        // 检查其他分组状态：如果所有其他分组都已收起，就只收起当前分组
-                        const otherExpanded = [];
-                        groupLabels.forEach(l => {
-                            const g = l.closest('.setting-group');
-                            if (g && g !== group && !g.classList.contains('collapsed')) {
-                                otherExpanded.push(g);
-                            }
-                        });
-                        if (otherExpanded.length === 0) {
-                            // 只有当前分组展开着，收起它
-                            group.classList.add('collapsed');
-                        } else {
-                            // 有其他分组展开，先收起其他，保持当前展开
-                            otherExpanded.forEach(g => g.classList.add('collapsed'));
-                        }
-                    }
+                    // 直接 toggle：展开变收起，收起变展开
+                    group.classList.toggle('collapsed');
                 });
             });
 
