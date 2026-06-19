@@ -547,6 +547,43 @@
         </div>
 
         <div class="setting-group">
+            <div class="setting-group-label">风阻参数</div>
+            <div class="setting-row info-row">
+                <div style="display:flex;justify-content:space-between;width:100%;">
+                    <span style="color:rgba(255,255,255,0.5);font-size:0.75rem;">风阻强度</span>
+                    <span class="speed-value" id="wind-intensity-val">1.0x</span>
+                </div>
+                <div class="speed-row">
+                    <span style="color:rgba(255,255,255,0.3);font-size:0.65rem;">0</span>
+                    <input type="range" id="wind-intensity" min="0" max="2" value="1" step="0.1">
+                    <span style="color:rgba(255,255,255,0.3);font-size:0.65rem;">2.0</span>
+                </div>
+            </div>
+            <div class="setting-row info-row">
+                <div style="display:flex;justify-content:space-between;width:100%;">
+                    <span style="color:rgba(255,255,255,0.5);font-size:0.75rem;">风阻线密度</span>
+                    <span class="speed-value" id="wind-density-val">中</span>
+                </div>
+                <div class="speed-row">
+                    <span style="color:rgba(255,255,255,0.3);font-size:0.65rem;">低</span>
+                    <input type="range" id="wind-density" min="0" max="1" value="0.5" step="0.25">
+                    <span style="color:rgba(255,255,255,0.3);font-size:0.65rem;">高</span>
+                </div>
+            </div>
+            <div class="setting-row info-row">
+                <div style="display:flex;justify-content:space-between;width:100%;">
+                    <span style="color:rgba(255,255,255,0.5);font-size:0.75rem;">每条流线粒子数</span>
+                    <span class="speed-value" id="wind-particles-val">8</span>
+                </div>
+                <div class="speed-row">
+                    <span style="color:rgba(255,255,255,0.3);font-size:0.65rem;">2</span>
+                    <input type="range" id="wind-particles" min="2" max="20" value="8" step="2">
+                    <span style="color:rgba(255,255,255,0.3);font-size:0.65rem;">20</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="setting-group">
             <div class="setting-group-label">速度</div>
             <div class="setting-row info-row">
                 <div style="display:flex;justify-content:space-between;width:100%;">
@@ -703,6 +740,9 @@
                 immersive: false,
                 speedHigh: 350,
                 speedLow: 25,
+                windIntensity: 1.0,    // 风阻最大强度 0~2
+                windDensity: 0.5,      // 风阻线密度 0~1
+                windParticleCount: 8,   // 每条流线的粒子数 2~20
             };
             let settings = { ...defaults };
             try {
@@ -744,6 +784,12 @@
                 $$('speed-low').value = settings.speedLow;
                 $$('speed-high-val').textContent = settings.speedHigh + ' km/h';
                 $$('speed-low-val').textContent = settings.speedLow + ' km/h';
+                $$('wind-intensity').value = settings.windIntensity * 1;
+                $$('wind-density').value = settings.windDensity;
+                $$('wind-particles').value = settings.windParticleCount;
+                $$('wind-intensity-val').textContent = (settings.windIntensity * 1).toFixed(1) + 'x';
+                $$('wind-density-val').textContent = ['低','中低','中','中高','高'][Math.round(settings.windDensity * 4)] || '中';
+                $$('wind-particles-val').textContent = settings.windParticleCount;
                 // 模型按钮
                 document.querySelectorAll('#settings-panel .model-btn').forEach(btn => {
                     btn.classList.toggle('active', btn.dataset.model === settings.modelType);
@@ -777,6 +823,7 @@
                     }
                     if (railway.train) railway.train.setWindEffectEnabled(true);
                     if (window.carModel) window.carModel.getGroup().visible = true;
+                    applyWindParams();
                     saveSettings();
                     return;
                 }
@@ -848,6 +895,34 @@
                 saveSettings();
             });
 
+            // 风阻参数滑块
+            const applyWindParams = () => {
+                if (!railway.train) return;
+                const cfg = {
+                    intensity: settings.windIntensity,
+                    density: settings.windDensity,
+                    particleCount: settings.windParticleCount
+                };
+                railway.train.configureWindEffect(cfg);
+            };
+
+            $$('wind-intensity').addEventListener('input', () => {
+                settings.windIntensity = +$$('wind-intensity').value;
+                $$('wind-intensity-val').textContent = settings.windIntensity.toFixed(1) + 'x';
+            });
+            $$('wind-intensity').addEventListener('change', () => { applyWindParams(); saveSettings(); });
+            $$('wind-density').addEventListener('input', () => {
+                settings.windDensity = +$$('wind-density').value;
+                const labels = ['低','中低','中','中高','高'];
+                $$('wind-density-val').textContent = labels[Math.round(settings.windDensity * 4)] || '中';
+            });
+            $$('wind-density').addEventListener('change', () => { applyWindParams(); saveSettings(); });
+            $$('wind-particles').addEventListener('input', () => {
+                settings.windParticleCount = +$$('wind-particles').value;
+                $$('wind-particles-val').textContent = settings.windParticleCount;
+            });
+            $$('wind-particles').addEventListener('change', () => { applyWindParams(); saveSettings(); });
+
             // 模型按钮
             panel.addEventListener('click', async (e) => {
                 const btn = e.target.closest('.model-btn');
@@ -860,8 +935,11 @@
                 localStorage.setItem('trainModelType', settings.modelType);
                 saveSettings();
                 await railway.switchTrainModel(modelType);
-                // 模型切换后恢复风阻状态
-                if (railway.train) railway.train.setWindEffectEnabled(settings.wind);
+                // 模型切换后恢复风阻状态和参数
+                if (railway.train) {
+                    railway.train.setWindEffectEnabled(settings.wind);
+                    applyWindParams();
+                }
             });
 
             // 初始化 UI
@@ -869,15 +947,16 @@
             setParticles(settings.particles);
             setHearts(settings.hearts);
 
-            // 模型加载后应用速度设置
-            const applySpeedSettings = () => {
+            // 模型加载后应用速度和风阻设置
+            const applyDelayedSettings = () => {
                 if (railway.train) {
                     railway.configureLaunch({ V_HIGH: settings.speedHigh, V_LOW: settings.speedLow });
                     railway.train.setWindEffectEnabled(settings.wind);
+                    applyWindParams();
                 }
             };
             // 延迟应用（等模型加载）
-            setTimeout(applySpeedSettings, 3000);
+            setTimeout(applyDelayedSettings, 3000);
 
             // 汽车模型初始可见性（修复刷新后设置不生效的 BUG）
             if (window.carModel) window.carModel.getGroup().visible = settings.car;

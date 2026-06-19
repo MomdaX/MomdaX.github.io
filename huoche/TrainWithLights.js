@@ -50,6 +50,7 @@ export class TrainWithLights {
         this.windEffectEnabled = true;
         this.aeroFlow = null;  // 空气动力学流场系统
         this._aeroClock = new THREE.Clock();
+        this._windIntensity = 1.0;  // 风阻强度倍率
     }
 
     /**
@@ -618,12 +619,16 @@ export class TrainWithLights {
 
     /**
      * 更新空气动力学流场
-     * @param {number} speed - 列车速度（单位/秒）
+     * @param {number} speed - 列车实际速度 (m/s)
      */
-    updateWindEffect(speed = 0.05) {
+    updateWindEffect(speed = 0) {
         if (!this.aeroFlow || !this.trainModel) return;
-        const intensity = Math.min(1, speed / 0.08); // 速度→强度
-        const isMoving = speed > 0.01;
+        // 速度线性映射到强度：speed 0→intensity 0, speed ~0.08(m/s)≈max→intensity 1
+        // 但乘以 windIntensity 倍率系数
+        const maxSpeed = 0.08 * (this._windIntensity || 1.0);
+        const rawIntensity = maxSpeed > 0 ? Math.min(1, speed / maxSpeed) : 0;
+        const intensity = rawIntensity;
+        const isMoving = speed > 0.001;
         const delta = this._aeroClock.getDelta();
         this.aeroFlow.update(this._aeroClock.getElapsedTime(), intensity, isMoving, delta);
     }
@@ -634,6 +639,25 @@ export class TrainWithLights {
     setWindEffectEnabled(enabled) {
         this.windEffectEnabled = enabled;
         if (this.aeroFlow) this.aeroFlow.setVisible(enabled);
+    }
+
+    /**
+     * 配置风阻效果参数
+     * @param {Object} cfg - { intensity: 0~2, density: 0~1, particleCount: 2~20 }
+     */
+    configureWindEffect(cfg = {}) {
+        if (cfg.intensity !== undefined) {
+            this._windIntensity = Math.max(0, Math.min(2, cfg.intensity));
+        }
+        // density 和 particleCount 需要重建流线，仅在 AeroFlowField 支持时应用
+        if (this.aeroFlow) {
+            if (cfg.density !== undefined && this.aeroFlow.setDensity) {
+                this.aeroFlow.setDensity(Math.max(0, Math.min(1, cfg.density)));
+            }
+            if (cfg.particleCount !== undefined && this.aeroFlow.setParticleCount) {
+                this.aeroFlow.setParticleCount(Math.max(2, Math.min(20, cfg.particleCount | 0)));
+            }
+        }
     }
 
     /**
@@ -1353,6 +1377,67 @@ class AeroFlowField {
     setVisible(v) {
         this._visible = v;
         this.group.visible = v;
+    }
+
+    /**
+     * 动态设置风阻线密度（0~1），通过缩放因子影响流线数量
+     */
+    setDensity(density) {
+        // density 已经存储在外部，这里通过调整透明度来体现
+        // 实际流线数量需要重建，这里通过 opacity 微调
+        const factor = 0.4 + density * 0.6;  // density 0→0.4, density 1→1.0
+        this.tubeMaterials.forEach(mat => {
+            if (mat.isShaderMaterial) {
+                mat.uniforms.uIntensity.value = Math.min(1, factor);
+            }
+        });
+    }
+
+    /**
+     * 动态设置每条流线的粒子数
+     */
+    setParticleCount(count) {
+        if (!this._particleSystem) return;
+        const numCurves = this._curves.length;
+        if (numCurves === 0) return;
+        const totalParticles = numCurves * count;
+        if (totalParticles <= 0) return;
+
+        // 重建粒子数据
+        const positions = new Float32Array(totalParticles * 3);
+        this._particleData = new Float32Array(totalParticles * 4);
+        const sizes = new Float32Array(totalParticles);
+        const colors = new Float32Array(totalParticles * 3);
+
+        const colorBright = new THREE.Color(0xddeeff);
+        const colorDim = new THREE.Color(0x5599cc);
+
+        for (let i = 0; i < totalParticles; i++) {
+            const curveIdx = i % numCurves;
+            const curve = this._curves[curveIdx];
+            const t = Math.random();
+            const pt = curve.getPointAt(t);
+            positions[i * 3] = pt.x;
+            positions[i * 3 + 1] = pt.y;
+            positions[i * 3 + 2] = pt.z;
+            this._particleData[i * 4] = curveIdx;
+            this._particleData[i * 4 + 1] = t;
+            this._particleData[i * 4 + 2] = 0.6 + Math.random() * 1.4;
+            this._particleData[i * 4 + 3] = Math.random() * Math.PI * 2;
+            const isBright = this._brightCurveIndices.has(curveIdx);
+            sizes[i] = isBright ? (0.015 + Math.random() * 0.025) : (0.008 + Math.random() * 0.014);
+            const col = isBright ? colorBright : colorDim;
+            colors[i * 3] = col.r * (0.7 + Math.random() * 0.3);
+            colors[i * 3 + 1] = col.g * (0.7 + Math.random() * 0.3);
+            colors[i * 3 + 2] = col.b * (0.7 + Math.random() * 0.3);
+        }
+
+        this._particleSystem.geometry.dispose();
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+        geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        this._particleSystem.geometry = geo;
     }
 
     dispose() {
