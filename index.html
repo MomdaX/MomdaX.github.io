@@ -845,6 +845,14 @@
             };
 
             // ---- 事件监听 ----
+            // 分组标签点击：展开/收起
+            document.querySelectorAll('#settings-panel .setting-group-label').forEach(label => {
+                label.addEventListener('click', () => {
+                    const group = label.closest('.setting-group');
+                    if (group) group.classList.toggle('collapsed');
+                });
+            });
+
             // 开关行点击
             panel.addEventListener('click', (e) => {
                 const row = e.target.closest('.setting-row[data-key]');
