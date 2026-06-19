@@ -263,19 +263,19 @@ export async function initMusicPlayer() {
     // 车灯控制按钮
     const headlightBtn = document.getElementById('headlightBtn');
     
-    // 从 localStorage 恢复按钮状态
+    // 从 settings 恢复按钮状态（优先使用新设置系统）
     try {
-        const savedState = localStorage.getItem('trainState');
-        if (savedState) {
-            const state = JSON.parse(savedState);
-            if (state.headlightOn === false) {
-                headlightBtn.classList.remove('active');
+        const savedSettings = JSON.parse(localStorage.getItem('trainSettings') || '{}');
+        if (savedSettings.headlight !== undefined) {
+            headlightBtn.classList.toggle('active', savedSettings.headlight !== false);
+        } else {
+            // 兼容旧的 trainState
+            const savedState = JSON.parse(localStorage.getItem('trainState') || 'null');
+            if (savedState) {
+                headlightBtn.classList.toggle('active', savedState.headlightOn !== false);
             } else {
                 headlightBtn.classList.add('active');
             }
-        } else {
-            // 默认状态：车灯开启
-            headlightBtn.classList.add('active');
         }
     } catch (e) {
         headlightBtn.classList.add('active');
@@ -283,8 +283,9 @@ export async function initMusicPlayer() {
     
     headlightBtn.addEventListener('click', () => {
         if (window.railTrackSystem) {
-            window.railTrackSystem.toggleHeadlights();
-            headlightBtn.classList.toggle('active');
+            const newState = !window.railTrackSystem.headlightOn;
+            window.railTrackSystem.setHeadlightOn(newState);
+            headlightBtn.classList.toggle('active', newState);
         }
     });
     
