@@ -1449,6 +1449,11 @@ class AeroFlowField {
         this._particleData = null;
         this._buildFlowParticles();
     }
+
+    /**
+     * 动态设置每条流线的粒子数（旧实现，仅做备用）
+     */
+    _oldSetParticleCount(count) {
         if (!this._particleSystem) return;
         const numCurves = this._curves.length;
         if (numCurves === 0) return;
