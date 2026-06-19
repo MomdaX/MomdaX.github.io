@@ -1380,23 +1380,75 @@ class AeroFlowField {
     }
 
     /**
-     * 动态设置风阻线密度（0~1），通过缩放因子影响流线数量
+     * 动态设置风阻线密度（0~1），重建流线来改变数量
      */
     setDensity(density) {
-        // density 已经存储在外部，这里通过调整透明度来体现
-        // 实际流线数量需要重建，这里通过 opacity 微调
-        const factor = 0.4 + density * 0.6;  // density 0→0.4, density 1→1.0
-        this.tubeMaterials.forEach(mat => {
-            if (mat.isShaderMaterial) {
-                mat.uniforms.uIntensity.value = Math.min(1, factor);
-            }
-        });
+        const clamped = Math.max(0, Math.min(1, density));
+        this._density = clamped;
+        // 重建流线几何体
+        this._rebuildAllStreamlines();
     }
 
     /**
      * 动态设置每条流线的粒子数
      */
     setParticleCount(count) {
+        const clamped = Math.max(2, Math.min(20, count | 0));
+        this._particleCount = clamped;
+        // 重建粒子系统
+        this._rebuildParticles();
+    }
+
+    /**
+     * 重建所有流线（用于 density 变化时）
+     */
+    _rebuildAllStreamlines() {
+        // 清理旧的管状网格
+        this.tubeMeshes.forEach(tm => {
+            if (tm.geometry) tm.geometry.dispose();
+            if (tm.material) {
+                if (tm.material.uniforms) {
+                    Object.values(tm.material.uniforms).forEach(u => {
+                        if (u.value && u.value.isTexture) u.value.dispose();
+                    });
+                }
+                tm.material.dispose();
+            }
+            if (tm.parent) tm.parent.remove(tm);
+        });
+        this.tubeMeshes = [];
+        // 清理旧的曲线
+        this._curves = [];
+        this._brightCurveIndices.clear();
+        // 清理旧的粒子
+        if (this._particleSystem) {
+            this._particleSystem.geometry.dispose();
+            if (this._particleSystem.parent) this._particleSystem.parent.remove(this._particleSystem);
+            this._particleSystem = null;
+        }
+        if (this._particleMaterial) { this._particleMaterial.dispose(); this._particleMaterial = null; }
+        if (this._particleTexture) { this._particleTexture.dispose(); this._particleTexture = null; }
+        this._particleData = null;
+
+        // 重建
+        this._buildStreamlineTubes();
+        this._buildFlowParticles();
+    }
+
+    /**
+     * 重建粒子系统（用于 particleCount 变化时）
+     */
+    _rebuildParticles() {
+        if (this._particleSystem) {
+            this._particleSystem.geometry.dispose();
+            if (this._particleSystem.parent) this._particleSystem.parent.remove(this._particleSystem);
+            this._particleSystem = null;
+        }
+        if (this._particleMaterial) { this._particleMaterial.dispose(); this._particleMaterial = null; }
+        if (this._particleTexture) { this._particleTexture.dispose(); this._particleTexture = null; }
+        this._particleData = null;
+        this._buildFlowParticles();
+    }
         if (!this._particleSystem) return;
         const numCurves = this._curves.length;
         if (numCurves === 0) return;
