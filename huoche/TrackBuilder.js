@@ -64,10 +64,12 @@ class TrackBuilder {
         
         // 列车运行控制（与车灯联动）
         this.isRunning = true;  // 默认运行
+        this._savedHeadlightOn = true;
+        this._trainLoadPromise = null;
 
         // 默认参数
         this.params = {
-            trackLength: 1660,
+            trackLength: 1500,
             gauge: 2.0,
             railHalfWidth: 0.12,
             railHeight: 0.28,
@@ -86,7 +88,6 @@ class TrackBuilder {
     }
 
     init(options = {}) {
-        console.log('TrackBuilder init called');
         Object.assign(this.params, options);
 
         // 恢复保存的状态（相机视角、车灯状态等）
@@ -156,7 +157,6 @@ class TrackBuilder {
         };
         
         localStorage.setItem('trainState', JSON.stringify(state));
-        console.log('[状态保存] 已保存当前状态');
     }
     
     /**
@@ -176,6 +176,23 @@ class TrackBuilder {
             }
         };
         
+        // 只在位置变化时输出
+        const lastPos = this._lastCameraPos;
+        const hasChanged = !lastPos || 
+            cameraState.cameraPos.x !== lastPos.x ||
+            cameraState.cameraPos.y !== lastPos.y ||
+            cameraState.cameraPos.z !== lastPos.z ||
+            cameraState.cameraTarget.x !== this._lastCameraTarget?.x ||
+            cameraState.cameraTarget.y !== this._lastCameraTarget?.y ||
+            cameraState.cameraTarget.z !== this._lastCameraTarget?.z;
+        
+        if (hasChanged) {
+            console.log('[相机状态] 位置:', cameraState.cameraPos);
+            console.log('[相机状态] 目标点:', cameraState.cameraTarget);
+            this._lastCameraPos = { ...cameraState.cameraPos };
+            this._lastCameraTarget = { ...cameraState.cameraTarget };
+        }
+        
         localStorage.setItem('trainCameraState', JSON.stringify(cameraState));
     }
     
@@ -190,6 +207,7 @@ class TrackBuilder {
                 const state = JSON.parse(savedState);
                 
                 // 恢复车灯和运行状态
+                this._savedHeadlightOn = state.headlightOn !== false;
                 this.isRunning = state.isRunning !== undefined ? state.isRunning : true;
                 
                 // 恢复相机参数
@@ -207,8 +225,6 @@ class TrackBuilder {
                 if (state.trainPosition) {
                     this.launchState.lastPosition = state.trainPosition;
                 }
-                
-                console.log('[状态恢复] 已恢复保存的状态:', state);
             }
             
             // 恢复相机状态（优先使用最新的相机状态）
@@ -223,7 +239,6 @@ class TrackBuilder {
                 }
             }
         } catch (e) {
-            console.warn('[状态恢复] 恢复失败:', e);
         }
     }
     
@@ -233,7 +248,6 @@ class TrackBuilder {
     clearSavedState() {
         localStorage.removeItem('trainState');
         localStorage.removeItem('trainCameraState');
-        console.log('[状态清除] 已清除保存的状态');
     }
 
     _initScene() {
@@ -254,6 +268,17 @@ class TrackBuilder {
             this.params.cameraTarget.y,
             this.params.cameraTarget.z
         );
+        
+        console.log('[相机初始化] 位置:', {
+            x: this.camera.position.x,
+            y: this.camera.position.y,
+            z: this.camera.position.z
+        });
+        console.log('[相机初始化] 目标点:', {
+            x: this.params.cameraTarget.x,
+            y: this.params.cameraTarget.y,
+            z: this.params.cameraTarget.z
+        });
 
         // 渲染器
         this.renderer = new THREE.WebGLRenderer({
@@ -292,8 +317,10 @@ class TrackBuilder {
 
     _initTrain() {
         this.train = new TrainWithLights();
-        this.train.loadTrain().then(() => {
-            this.scene.add(this.train.getGroup());
+        this.train.setHeadlightOn(this._savedHeadlightOn);
+        this.scene.add(this.train.getGroup());
+        this._trainLoadPromise = this.train.loadTrain().then((loaded) => {
+            if (!loaded) return;
             
             // 恢复车灯状态（如果之前保存的是关闭状态）
             this._restoreHeadlightState();
@@ -309,10 +336,8 @@ class TrackBuilder {
             if (savedState) {
                 const state = JSON.parse(savedState);
                 
-                // 如果保存的状态是车灯关闭，则关闭车灯
-                if (state.headlightOn === false && this.train) {
-                    this.train.toggle();  // 切换到关闭状态
-                    console.log('[状态恢复] 车灯已恢复为关闭状态');
+                if (this.train) {
+                    this.train.setHeadlightOn(state.headlightOn !== false);
                 }
                 
                 // 恢复列车位置
@@ -321,7 +346,6 @@ class TrackBuilder {
                 }
             }
         } catch (e) {
-            console.warn('[状态恢复] 车灯状态恢复失败:', e);
         }
     }
 
@@ -484,7 +508,6 @@ class TrackBuilder {
             this.train.setPosition(lp.START_X);
             state.phase = 'cruise_in';
             state.phaseStartTime = now;
-            console.log('[弹射动画] 阶段1: 高速入场 (350 km/h)');
             return;
         }
         
@@ -500,7 +523,6 @@ class TrackBuilder {
                     // 到达减速位置，进入骤降阶段
                     state.phase = 'brake';
                     state.phaseStartTime = now;
-                    console.log('[弹射动画] 阶段2: 速度骤降');
                 }
                 break;
             }
@@ -515,7 +537,6 @@ class TrackBuilder {
                     velocity = lp.V_LOW;
                     state.phase = 'overshoot';
                     state.phaseStartTime = now;
-                    console.log('[弹射动画] 阶段3: 过冲回稳');
                 }
                 break;
             }
@@ -536,7 +557,6 @@ class TrackBuilder {
                     velocity = lp.V_LOW;
                     state.phase = 'settle';
                     state.phaseStartTime = now;
-                    console.log('[弹射动画] 阶段4: 低速滑行 (25 km/h)');
                 }
                 break;
             }
@@ -548,7 +568,6 @@ class TrackBuilder {
                 if (elapsed >= lp.SETTLE_DURATION) {
                     state.phase = 'accelerate';
                     state.phaseStartTime = now;
-                    console.log('[弹射动画] 阶段5: 加速离开');
                 }
                 break;
             }
@@ -563,7 +582,6 @@ class TrackBuilder {
                     velocity = lp.V_HIGH;
                     state.phase = 'cruise_out';
                     state.phaseStartTime = now;
-                    console.log('[弹射动画] 阶段6: 高速离开 (350 km/h)');
                 }
                 break;
             }
@@ -574,7 +592,6 @@ class TrackBuilder {
                 if (position >= lp.EXIT_X) {
                     state.phase = 'waiting';
                     this.train.setPosition(lp.START_X);
-                    console.log('[弹射动画] 循环：回到起点');
                     return;
                 }
                 break;
@@ -601,32 +618,30 @@ class TrackBuilder {
         return this.train?.headlightOn ?? true;
     }
 
-    /** 切换车灯（同时控制列车运行） */
-    toggleHeadlights() {
+    /** 设置车灯开关（不影响列车运行） */
+    setHeadlightOn(on) {
         if (this.train) {
-            const newState = this.train.toggle();
-            console.log('车灯状态:', newState ? '开启' : '关闭');
-            
-            // 车灯开启时列车运行，关闭时列车停止
-            this.isRunning = newState;
-            console.log('列车运行状态:', newState ? '运行' : '停止');
-            
-            // 保存状态
+            this.train.setHeadlightOn(on);
+            this._savedHeadlightOn = on;
             this._saveState();
         }
+    }
+
+    /** 设置列车运行开关 */
+    setRun(run) {
+        this.isRunning = !!run;
+        this._saveState();
     }
     
     /** 启动列车 */
     startTrain() {
         this.isRunning = true;
-        console.log('列车启动');
         this._saveState();
     }
     
     /** 停止列车 */
     stopTrain() {
         this.isRunning = false;
-        console.log('列车停止');
         this._saveState();
     }
     
@@ -677,20 +692,17 @@ class TrackBuilder {
     toggleWindEffect() {
         if (this.train) {
             this.train.setWindEffectEnabled(!this.train.windEffectEnabled);
-            console.log('风阻效果:', this.train.windEffectEnabled ? '开启' : '关闭');
         }
     }
 
     /** 切换列车模型（8节/16节） */
     async switchTrainModel(modelType) {
         if (!this.train) {
-            console.error('列车未初始化');
             return;
         }
         
         const currentType = this.train.getModelType();
         if (currentType === modelType) {
-            console.log(`已经是 ${modelType} 节车厢模型，无需切换`);
             return modelType;
         }
         
@@ -699,20 +711,21 @@ class TrackBuilder {
         this.isRunning = false;
         
         try {
-            await this.train.switchModel(modelType);
+            const result = await this.train.switchModel(modelType);
             
-            // 保存状态
-            this._saveState();
-            
-            console.log(`[TrackBuilder] 列车模型已切换为 ${modelType} 节车厢`);
+            if (result === modelType) {
+                // 保存状态
+                this._saveState();
+                return modelType;
+            } else {
+                return currentType;
+            }
         } catch (e) {
-            console.error('模型切换失败:', e);
+            return currentType;
+        } finally {
+            // 恢复运行状态
+            this.isRunning = wasRunning;
         }
-        
-        // 恢复运行状态
-        this.isRunning = wasRunning;
-        
-        return modelType;
     }
     
     /** 获取当前列车模型类型 */
@@ -796,7 +809,6 @@ class TrackBuilder {
         if (launchConfig.EXIT_X !== undefined) {
             lp.EXIT_X = launchConfig.EXIT_X;
         }
-        console.log('[弹射动画] 参数已更新:', lp);
         return this;
     }
 
@@ -810,7 +822,6 @@ class TrackBuilder {
         if (this.train) {
             this.train.setPosition(this.launchParams.START_X);
         }
-        console.log('[弹射动画] 已重置');
     }
 }
 

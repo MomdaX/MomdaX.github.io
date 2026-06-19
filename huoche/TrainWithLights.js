@@ -4,8 +4,8 @@ import { MTLLoader } from './MTLLoader.js';
 import { OBJLoader } from './OBJLoader.js';
 
 /**
- * 列车模型 + 车灯光束封装类
- * 将列车模型、车灯、光束封装为一个整体对象
+ * 列车模型 + 模型自发光车灯封装类
+ * 将列车模型、车头灯、尾灯封装为一个整体对象
  */
 export class TrainWithLights {
     constructor(params = {}) {
@@ -16,7 +16,7 @@ export class TrainWithLights {
             trainScale: 1.5,
             trainRotationY: 0,  // 列车沿X轴运动，不需要旋转
             trainYOffset: 0.5,
-            // 车灯参数
+            // 车灯参数（白色车灯）
             headlightColor: 0xffffff,
             headlightIntensity: 30.0,
             headlightDistance: 360,
@@ -31,8 +31,12 @@ export class TrainWithLights {
         this.trainGroup = new THREE.Group();
         this.modelLoaded = false;
         this.headlights = [];
+        this.tailLights = [];
+        this.modelLightSurfaces = [];
         this.headlightOn = true;
         this.beamLayers = [];
+        this._loadToken = 0;
+        this._switchQueue = Promise.resolve();
 
         // 车内灯光（窗户发光）
         this.interiorLights = [];
@@ -55,39 +59,59 @@ export class TrainWithLights {
      */
     loadTrain(onProgress = null) {
         return new Promise((resolve, reject) => {
+            const loadToken = ++this._loadToken;
+            this.modelLoaded = false;
+            const isCurrentLoad = () => loadToken === this._loadToken;
             const mtlLoader = new MTLLoader();
             
             mtlLoader.load(
                 this.params.trainMtl,
                 (materials) => {
+                    if (!isCurrentLoad()) {
+                        resolve(false);
+                        return;
+                    }
                     materials.preload();
                     const objLoader = new OBJLoader();
                     objLoader.setMaterials(materials);
                     objLoader.load(
                         this.params.trainObj,
                         (object) => {
+                            if (!isCurrentLoad()) {
+                                this._disposeObject(object);
+                                resolve(false);
+                                return;
+                            }
                             this._setupTrainModel(object);
-                            resolve();
+                            resolve(true);
                         },
                         (xhr) => {
+                            if (!isCurrentLoad()) return;
                             const percent = (xhr.loaded / xhr.total * 100);
                             onProgress?.(percent);
                         },
                         (error) => {
-                            console.error('OBJ load error:', error);
+                            if (!isCurrentLoad()) {
+                                resolve(false);
+                                return;
+                            }
                             this._createFallbackTrain();
-                            resolve();
+                            resolve(true);
                         }
                     );
                 },
                 (xhr) => {
+                    if (!isCurrentLoad()) return;
                     const percent = (xhr.loaded / xhr.total * 100);
                     onProgress?.(percent);
                 },
                 (error) => {
-                    console.error('MTL load error:', error);
+                    if (!isCurrentLoad()) {
+                        resolve(false);
+                        return;
+                    }
                     this._createFallbackTrain();
-                    resolve();
+                    resolve(true);
                 }
             );
         });
@@ -124,8 +148,6 @@ export class TrainWithLights {
             bottomY: this.trainBoundingBox.min.y   // 列车底部Y坐标
         };
         
-        console.log('列车尺寸:', this.trainDimensions);
-
         const offsetY = p.trainYOffset - box.min.y;
         this.trainModel.position.set(0, offsetY, 0);
 
@@ -140,7 +162,6 @@ export class TrainWithLights {
         this._createHeadlights();
         this._createInteriorLights();
         this._createWindEffect();
-        console.log('列车模型加载完成');
     }
 
     /**
@@ -196,111 +217,281 @@ export class TrainWithLights {
         this._createHeadlights();
         this._createInteriorLights();
         this._createWindEffect();
-        console.log('使用简易示意火车模型，尺寸:', this.trainDimensions);
     }
 
     /**
-     * 创建车灯及光束
+     * 创建车头灯自发光表面
      */
     _createHeadlights() {
         if (!this.trainModel) return;
 
-        const p = this.params;
-        const dims = this.trainDimensions || {
-            frontX: 2 * p.trainScale,
-            rearX: -2 * p.trainScale,
-            height: 0.65 * p.trainScale,
-            width: 1.4 * p.trainScale
-        };
+        const dims = this._getLocalDimensions();
+        const frontX = dims.frontX;
+        const zLimit = dims.width * 0.18;
+        const minY = dims.bottomY + dims.height * 0.28;
+        const maxY = dims.bottomY + dims.height * 0.56;
 
-        // 车灯位置：在列车前方（frontX），照射沿X正方向
-        for (let i = 0; i < 2; i++) {
-            // 两盏车灯在Z轴方向分布（左右）
-            const zOffset = (i === 0 ? -dims.width * 0.15 : dims.width * 0.15);
-            const lightY = dims.height * 0.2;  // 车灯高度
-            const lightX = dims.frontX -26;  // 车灯在前方
+        const surfaces = this._createLampSurfaceMeshes({
+            name: 'headlight',
+            materialNames: ['Material__79'],
+            color: 0xffffff,
+            emissiveIntensity: this.headlightOn ? 4.5 : 0,
+            opacity: this.headlightOn ? 1.0 : 0.18,
+            triangleMatches: (center) => (
+                center.x >= frontX - dims.width * 0.78 &&
+                center.y >= minY &&
+                center.y <= maxY &&
+                Math.abs(center.z) >= zLimit
+            )
+        });
 
-            // 聚光灯
-            const headlight = new THREE.SpotLight(
-                0xffffff,
-                this.headlightOn ? p.headlightIntensity : 0
-            );
-            headlight.position.set(lightX, lightY, zOffset);
-            // 目标在车灯前方（X正方向）
-            headlight.target.position.set(lightX + 35 * p.trainScale, 0.2 * p.trainScale, zOffset);
-            headlight.distance = p.headlightDistance;
-            headlight.angle = p.headlightAngle;
-            headlight.penumbra = p.headlightPenumbra;
-            headlight.decay = p.headlightDecay;
-            headlight.castShadow = true;
-            headlight.shadow.mapSize.width = 1024;
-            headlight.shadow.mapSize.height = 1024;
-            headlight.shadow.camera.near = 0.1;
-            headlight.shadow.camera.far = 200;
-            headlight.shadow.camera.fov = 18;
+        this.headlights.push(...surfaces);
 
-            // 多层锥形光束（沿X轴方向）
-            const beamLength = 66 * p.trainScale;
-            const beams = [];
-            
-            const layers = [
-                { startRadius: 0.08, endRadius: 0.5, opacity: 0.9 },
-                { startRadius: 0.15, endRadius: 0.75, opacity: 0.6 },
-                { startRadius: 0.22, endRadius: 1.0, opacity: 0.4 },
-                { startRadius: 0.3, endRadius: 1.3, opacity: 0.25 }
-            ];
-            
-            layers.forEach((layer, index) => {
-                // 光束几何体：圆柱体，旋转使其沿X轴方向
-                const beamGeo = new THREE.CylinderGeometry(layer.startRadius, layer.endRadius, beamLength, 16, 1, true);
-                beamGeo.rotateZ(Math.PI / 2);  // 旋转90度使光束沿X轴
-                
-                const beamCanvas = document.createElement('canvas');
-                beamCanvas.width = 64;
-                beamCanvas.height = 256;
-                const ctx = beamCanvas.getContext('2d');
-                
-                const gradient = ctx.createLinearGradient(0, 0, 0, beamCanvas.height);
-                gradient.addColorStop(0, `rgba(255, 255, 255, ${layer.opacity})`);
-                gradient.addColorStop(0.25, `rgba(255, 255, 252, ${layer.opacity * 0.7})`);
-                gradient.addColorStop(0.5, `rgba(255, 255, 245, ${layer.opacity * 0.4})`);
-                gradient.addColorStop(0.75, `rgba(255, 255, 230, ${layer.opacity * 0.15})`);
-                gradient.addColorStop(1, 'rgba(255, 255, 220, 0)');
-                
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, beamCanvas.width, beamCanvas.height);
-                
-                const beamTexture = new THREE.CanvasTexture(beamCanvas);
-                beamTexture.wrapS = THREE.ClampToEdgeWrapping;
-                beamTexture.wrapT = THREE.ClampToEdgeWrapping;
-                
-                const beamMat = new THREE.MeshBasicMaterial({
-                    map: beamTexture,
-                    transparent: true,
-                    opacity: this.headlightOn ? 0.85 : 0,
-                    side: THREE.FrontSide,
-                    depthWrite: false
-                });
-                const beam = new THREE.Mesh(beamGeo, beamMat);
-                // 光束位置：从车灯位置开始，沿X正方向延伸
-                beam.position.set(lightX + beamLength / 2, lightY - index * 0.005, zOffset);
-                
-                this.trainModel.add(beam);
-                beams.push(beam);
-            });
-
-            this.trainModel.add(headlight);
-            this.trainModel.add(headlight.target);
-
-            this.headlights.push({ light: headlight, beams });
-        }
-
-        console.log('车灯及光束创建完成');
+        // 创建两条自发光光束照向前方（不创建 Three.js 光源）
+        this._createForwardBeams(dims, zLimit);
     }
 
     /**
-     * 创建车内灯光（窗户发光 + 内部点光源 + 尾部停车灯）
-     * 识别窗户材质并设置 emissive 发光，同时在车厢内放置点光源
+     * 创建两条自发光光束照向前方（不创建 Three.js 光源）
+     * 使用渐变透明的锥形 mesh，从车灯位置延伸向前方
+     * @param {Object} dims - _getLocalDimensions() 返回的局部空间尺寸
+     * @param {number} zLimit - 左右车灯 Z 阈值
+     */
+    _createForwardBeams(dims, zLimit) {
+        if (!this.trainModel) return;
+
+        const frontX = dims.frontX;
+        const minY = dims.bottomY + dims.height * 0.28;
+        const maxY = dims.bottomY + dims.height * 0.56;
+        const beamLength = dims.length * 2.2;
+        const beamStartX = frontX + dims.width * 0.25;
+        const centerY = (minY + maxY) / 2;
+
+        // 左右两条光束的 Z 位置（对应左右车灯）
+        const zPositions = [
+            zLimit + dims.width * 0.02,   // 左灯
+            -(zLimit + dims.width * 0.02)  // 右灯
+        ];
+
+        zPositions.forEach((zPos, index) => {
+            const beamRadiusStart = dims.width * 0.06;
+            const beamRadiusMid = dims.width * 0.13;
+            const beamRadiusEnd = 0;  // 尖端收拢，无底面
+
+            const segments = 24;
+            const ringCount = 30;
+            const vertices = [];
+            const indices = [];
+            const uvs = [];
+
+            for (let i = 0; i <= ringCount; i++) {
+                const t = i / ringCount;
+                const x = beamStartX + t * beamLength;
+
+                // 半径：近端收窄 → 中段扩散 → 远端收窄
+                let radius;
+                if (t < 0.15) {
+                    radius = beamRadiusStart + (beamRadiusMid - beamRadiusStart) * (t / 0.15);
+                } else if (t < 0.7) {
+                    radius = beamRadiusMid;
+                } else {
+                    radius = beamRadiusMid + (beamRadiusEnd - beamRadiusMid) * ((t - 0.7) / 0.3);
+                }
+
+                for (let j = 0; j <= segments; j++) {
+                    const angle = (j / segments) * Math.PI * 2;
+                    const y = centerY + Math.cos(angle) * radius;
+                    const z = zPos + Math.sin(angle) * radius;
+                    vertices.push(x, y, z);
+                    uvs.push(t, j / segments);
+                }
+            }
+
+            // 构建索引
+            const vertsPerRing = segments + 1;
+            for (let i = 0; i < ringCount; i++) {
+                for (let j = 0; j < segments; j++) {
+                    const a = i * vertsPerRing + j;
+                    const b = a + vertsPerRing;
+                    const c = a + 1;
+                    const d = b + 1;
+                    indices.push(a, b, c);
+                    indices.push(c, b, d);
+                }
+            }
+
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+            geo.setIndex(indices);
+            geo.computeVertexNormals();
+
+            // 使用自定义着色器实现光束渐变效果
+            const mat = new THREE.ShaderMaterial({
+                transparent: true,
+                depthWrite: false,
+                blending: THREE.AdditiveBlending,
+                uniforms: {
+                    uColor: { value: new THREE.Color(0xffffff) },
+                    uIntensity: { value: this.headlightOn ? 1.0 : 0 },
+                    uVisible: { value: this.headlightOn ? 1 : 0 }
+                },
+                vertexShader: /* glsl */`
+                    varying vec2 vUv;
+                    varying vec3 vNormal;
+                    void main() {
+                        vUv = uv;
+                        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                        vNormal = normalize(normalMatrix * normal);
+                        gl_Position = projectionMatrix * mvPosition;
+                    }
+                `,
+                fragmentShader: /* glsl */`
+                    uniform vec3 uColor;
+                    uniform float uIntensity;
+                    uniform float uVisible;
+                    varying vec2 vUv;
+                    varying vec3 vNormal;
+                    void main() {
+                        // 沿光束长度方向 (x=uv.x) 的渐变：近端亮 → 远端淡出
+                        float alongFade = 1.0 - smoothstep(0.0, 1.0, vUv.x);
+                        // 径向渐变：中心亮，边缘透明
+                        float radialFade = 1.0 - abs(vUv.y - 0.5) * 2.0;
+                        radialFade = pow(radialFade, 2.5);
+                        // 前端也有一个快速衰减（避免灯口处太突兀）
+                        float frontFade = smoothstep(0.0, 0.05, vUv.x);
+                        float alpha = alongFade * radialFade * frontFade * uIntensity * 0.7;
+                        alpha *= uVisible;
+                        vec3 col = uColor * (1.0 + 0.3 * radialFade);
+                        gl_FragColor = vec4(col, alpha);
+                    }
+                `
+            });
+            mat.toneMapped = false;
+
+            const beamMesh = new THREE.Mesh(geo, mat);
+            beamMesh.name = `headlight-beam-${index}`;
+            beamMesh.renderOrder = 25;
+            this.trainModel.add(beamMesh);
+            this.beamLayers.push({ mesh: beamMesh, material: mat, type: 'forward' });
+        });
+    }
+
+    /**
+     * 使用模型本身的灯面三角面片创建自发光表面，不再额外创建 Three.js 光源。
+     */
+    _createLampSurfaceMeshes({ name, materialNames, color, emissiveIntensity, opacity, triangleMatches }) {
+        if (!this.trainModel) return [];
+
+        const created = [];
+        const rootInverse = new THREE.Matrix4();
+        this.trainModel.updateWorldMatrix(true, true);
+        rootInverse.copy(this.trainModel.matrixWorld).invert();
+
+        this.trainModel.traverse((child) => {
+            if (!child.isMesh || child.userData?.isModelLampSurface || !child.geometry?.attributes?.position) return;
+
+            const sourceMaterials = Array.isArray(child.material) ? child.material : [child.material];
+            if (!sourceMaterials.some((mat) => materialNames.includes(mat?.name))) return;
+
+            const position = child.geometry.attributes.position;
+            const index = child.geometry.index;
+            const groups = child.geometry.groups?.length
+                ? child.geometry.groups
+                : [{ start: 0, count: index ? index.count : position.count, materialIndex: 0 }];
+            const localToRoot = new THREE.Matrix4().multiplyMatrices(rootInverse, child.matrixWorld);
+            const vertices = [];
+            const v = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+            const center = new THREE.Vector3();
+
+            const pushTriangle = (a, b, c) => {
+                v[0].fromBufferAttribute(position, a).applyMatrix4(localToRoot);
+                v[1].fromBufferAttribute(position, b).applyMatrix4(localToRoot);
+                v[2].fromBufferAttribute(position, c).applyMatrix4(localToRoot);
+                center.copy(v[0]).add(v[1]).add(v[2]).multiplyScalar(1 / 3);
+                if (!triangleMatches(center)) return;
+                vertices.push(
+                    v[0].x, v[0].y, v[0].z,
+                    v[1].x, v[1].y, v[1].z,
+                    v[2].x, v[2].y, v[2].z
+                );
+            };
+
+            groups.forEach((group) => {
+                const sourceMaterial = sourceMaterials[group.materialIndex] || sourceMaterials[0];
+                if (!materialNames.includes(sourceMaterial?.name)) return;
+
+                const end = group.start + group.count;
+                for (let i = group.start; i < end; i += 3) {
+                    const a = index ? index.getX(i) : i;
+                    const b = index ? index.getX(i + 1) : i + 1;
+                    const c = index ? index.getX(i + 2) : i + 2;
+                    pushTriangle(a, b, c);
+                }
+            });
+
+            if (!vertices.length) return;
+
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.computeVertexNormals();
+
+            const material = new THREE.MeshStandardMaterial({
+                name: `model-${name}-emissive`,
+                color,
+                emissive: new THREE.Color(color),
+                emissiveIntensity,
+                metalness: 0,
+                roughness: 0.18,
+                transparent: true,
+                opacity,
+                side: THREE.DoubleSide,
+                polygonOffset: true,
+                polygonOffsetFactor: -2,
+                polygonOffsetUnits: -2
+            });
+            material.toneMapped = false;
+
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.name = `model-${name}-surface`;
+            mesh.userData.isModelLampSurface = true;
+            mesh.renderOrder = 30;
+            this.trainModel.add(mesh);
+
+            const surface = { mesh, material, type: name };
+            this.modelLightSurfaces.push(surface);
+            created.push(surface);
+        });
+
+        return created;
+    }
+
+    _getLocalDimensions() {
+        const scale = this.params.trainScale || 1;
+        const dims = this.trainDimensions || {
+            frontX: 2 * scale,
+            rearX: -2 * scale,
+            length: 4 * scale,
+            height: 0.65 * scale,
+            width: 1.4 * scale,
+            topY: 0.5 * scale,
+            bottomY: 0
+        };
+
+        return {
+            length: dims.length / scale,
+            width: dims.width / scale,
+            height: dims.height / scale,
+            rearX: dims.rearX / scale,
+            frontX: dims.frontX / scale,
+            topY: dims.topY / scale,
+            bottomY: dims.bottomY / scale
+        };
+    }
+
+    /**
+     * 创建车内灯光（窗户发光 + 尾部停车灯）
+     * 识别窗户材质并设置 emissive 发光
      * 尾部上方窗户不发光，中间窗户微光，其他窗户正常发光
      * 尾部两个停车灯为红色
      */
@@ -376,76 +567,39 @@ export class TrainWithLights {
             }
         });
 
-        // 在车厢内部放置点光源，增强窗户透光效果
-        const bodyLength = dims.length;
-        const bodyHeight = dims.height;
-        const bodyWidth = dims.width;
-        const midY = (dims.topY + dims.bottomY) * 0.5 + bodyHeight * 0.15;
-        const lightSpacing = bodyLength * 0.18;
-        const lightCount = Math.max(3, Math.floor(bodyLength / lightSpacing));
-
-        for (let i = 0; i < lightCount; i++) {
-            const x = dims.rearX + (i + 0.5) * (bodyLength / lightCount);
-            // 尾部区域不放置白色灯光，只保留红色尾灯
-            if (x <= rearThreshold) continue;
-            for (const side of [-1, 1]) {
-                const light = new THREE.PointLight(
-                    0xffe8c8,
-                    this.headlightOn ? 1.2 : 0,
-                    bodyWidth * 1.5,
-                    2.0
-                );
-                light.position.set(x, midY, side * bodyWidth * 0.2);
-                this.trainModel.add(light);
-                this.interiorLights.push(light);
-            }
-        }
-
         // 尾部两个红色停车灯
         this._createTailLights();
-
-        console.log(`车内灯光创建完成: ${this.windowMaterials.length} 个窗户材质, ${this.interiorLights.length} 个内部光源`);
     }
 
     /**
-     * 创建尾部两个红色停车灯
+     * 创建尾部两个红色停车灯（仅自发光表面，无光束）
+     * 使用和车头灯相同的材质 Material__79，但位置在列车尾部
      */
     _createTailLights() {
-        const dims = this.trainDimensions;
-        const s = this.params.trainScale;
-        const tailY = (dims.topY + dims.bottomY) * 0.5-0.35;
-        const tailX = dims.rearX + 22.3;  // 尾部端面内侧
+        if (!this.trainModel) return;
 
-        for (const side of [-1, 1]) {
-            const z = side * dims.width * 0.2;
+        const dims = this._getLocalDimensions();
+        const rearX = dims.rearX;
+        const zLimit = dims.width * 0.18;
+        const minY = dims.bottomY + dims.height * 0.28;
+        const maxY = dims.bottomY + dims.height * 0.56;
 
-            // 红色点光源
-            const light = new THREE.PointLight(
-                0xff2222,
-                this.headlightOn ? 2.0 : 0,
-                6 * s,
-                2.0
-            );
-            light.position.set(tailX, tailY, z);
-            this.trainModel.add(light);
-            this.tailLights = this.tailLights || [];
-            this.tailLights.push(light);
+        const surfaces = this._createLampSurfaceMeshes({
+            name: 'tail-light',
+            materialNames: ['Material__79'],
+            color: 0xff2222,
+            emissiveIntensity: 3.5,
+            opacity: 1.0,
+            triangleMatches: (center) => (
+                center.x <= rearX + dims.width * 0.78 &&
+                center.y >= minY &&
+                center.y <= maxY &&
+                Math.abs(center.z) >= zLimit
+            )
+        });
 
-            // 红色发光小球（可见的停车灯）
-            const bulbGeo = new THREE.SphereGeometry(0.06 * s, 12, 12);
-            const bulbMat = new THREE.MeshBasicMaterial({
-                color: 0xff1111,
-                transparent: true,
-                opacity: this.headlightOn ? 1.0 : 0.3
-            });
-            const bulb = new THREE.Mesh(bulbGeo, bulbMat);
-            bulb.position.set(tailX, tailY, z);
-            this.trainModel.add(bulb);
-            this.tailBulbs = this.tailBulbs || [];
-            this.tailBulbs.push({ mesh: bulb, material: bulbMat });
-        }
-
-        console.log('尾部停车灯创建完成');
+        this.tailLights.push(...surfaces);
+        // 尾灯无光束
     }
 
     /**
@@ -460,7 +614,6 @@ export class TrainWithLights {
         this.aeroFlow = new AeroFlowField(this.trainDimensions, this.params.trainScale);
         this.aeroFlow.group.renderOrder = 5;
         this.trainModel.add(this.aeroFlow.group);
-        console.log('空气动力学流场创建完成（GPU 粒子流）');
     }
 
     /**
@@ -471,7 +624,8 @@ export class TrainWithLights {
         if (!this.aeroFlow || !this.trainModel) return;
         const intensity = Math.min(1, speed / 0.08); // 速度→强度
         const isMoving = speed > 0.01;
-        this.aeroFlow.update(this._aeroClock.getElapsedTime(), intensity, isMoving);
+        const delta = this._aeroClock.getDelta();
+        this.aeroFlow.update(this._aeroClock.getElapsedTime(), intensity, isMoving, delta);
     }
 
     /**
@@ -500,17 +654,15 @@ export class TrainWithLights {
     }
 
     /**
-     * 更新车灯显示
+     * 更新车灯显示（包括自发光表面、前向光束、尾灯）
      */
     _updateHeadlights() {
-        const targetIntensity = this.headlightOn ? this.params.headlightIntensity : 0;
-        const targetBeamOpacity = this.headlightOn ? 0.85 : 0;
+        const targetIntensity = this.headlightOn ? 4.5 : 0;
+        const targetOpacity = this.headlightOn ? 1.0 : 0.18;
 
         this.headlights.forEach((hl) => {
-            hl.light.intensity = targetIntensity;
-            hl.beams.forEach(beam => {
-                beam.material.opacity = targetBeamOpacity;
-            });
+            hl.material.emissiveIntensity = targetIntensity;
+            hl.material.opacity = targetOpacity;
         });
 
         // 车内灯光联动
@@ -524,15 +676,20 @@ export class TrainWithLights {
 
         // 尾部停车灯：始终亮起，不受车灯开关影响
         if (this.tailLights) {
-            this.tailLights.forEach((light) => {
-                light.intensity = 2.0;
+            this.tailLights.forEach((tailLight) => {
+                tailLight.material.emissiveIntensity = 3.5;
+                tailLight.material.opacity = 1.0;
             });
         }
-        if (this.tailBulbs) {
-            this.tailBulbs.forEach(({ material }) => {
-                material.opacity = 1.0;
-            });
-        }
+
+        // 光束层：前向光束跟随车灯开关
+        this.beamLayers.forEach((beam) => {
+            if (beam.material.isShaderMaterial) {
+                beam.material.uniforms.uIntensity.value = this.headlightOn ? 1.0 : 0;
+                beam.material.uniforms.uVisible.value = this.headlightOn ? 1 : 0;
+            }
+            beam.material.opacity = this.headlightOn ? 0.6 : 0;
+        });
     }
 
     /**
@@ -576,11 +733,25 @@ export class TrainWithLights {
      * 清理资源
      */
     dispose() {
+        this._loadToken++;
         this._clearTrainResources();
         if (this.aeroFlow) {
             this.aeroFlow.dispose();
             this.aeroFlow = null;
         }
+    }
+
+    _disposeObject(object) {
+        object?.traverse?.((child) => {
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) {
+                if (Array.isArray(child.material)) {
+                    child.material.forEach((mat) => mat.dispose());
+                } else {
+                    child.material.dispose();
+                }
+            }
+        });
     }
     
     /**
@@ -588,6 +759,24 @@ export class TrainWithLights {
      */
     _clearTrainResources() {
         if (this.trainModel) {
+            // 先清理光束层
+            this.beamLayers.forEach((beam) => {
+                if (beam.mesh) {
+                    if (beam.mesh.geometry) beam.mesh.geometry.dispose();
+                    if (beam.mesh.material) {
+                        if (beam.mesh.material.map) beam.mesh.material.map.dispose();
+                        beam.mesh.material.dispose();
+                    }
+                }
+            });
+            this.beamLayers = [];
+
+            // 先清理风阻效果（它是 trainModel 的子节点，必须在 trainModel 清理前处理）
+            if (this.aeroFlow) {
+                this.aeroFlow.dispose();
+                this.aeroFlow = null;
+            }
+
             this.trainModel.traverse((child) => {
                 if (child.geometry) child.geometry.dispose();
                 if (child.material) {
@@ -601,13 +790,18 @@ export class TrainWithLights {
             this.trainGroup.remove(this.trainModel);
             this.trainModel = null;
         }
+        // 如果 aeroFlow 还未被清理
+        if (this.aeroFlow) {
+            this.aeroFlow.dispose();
+            this.aeroFlow = null;
+        }
         this.headlights = [];
-        this.beamLayers = [];
         this.interiorLights = [];
         this.windowMaterials = [];
         this.tailLights = [];
-        this.tailBulbs = [];
+        this.modelLightSurfaces = [];
         this.modelLoaded = false;
+        this.currentModelType = null;
     }
     
     /**
@@ -616,12 +810,16 @@ export class TrainWithLights {
      * @returns {Promise} 模型加载完成后 resolve
      */
     async switchModel(modelType) {
+        this._switchQueue = this._switchQueue
+            .catch(() => {})
+            .then(() => this._switchModelNow(modelType));
+        return this._switchQueue;
+    }
+
+    async _switchModelNow(modelType) {
         if (modelType !== '8' && modelType !== '16') {
-            console.error('Invalid model type:', modelType);
             return;
         }
-        
-        console.log(`[列车切换] 开始切换到 ${modelType} 节车厢模型`);
         
         // 保存当前状态
         const currentX = this.currentX;
@@ -637,7 +835,10 @@ export class TrainWithLights {
         this.params.trainObj = `huoche/huoche${modelType}.obj`;
         
         // 加载新模型
-        await this.loadTrain();
+        const loaded = await this.loadTrain();
+        if (!loaded) {
+            return this.currentModelType;
+        }
         
         // 恢复状态
         this.setPosition(currentX);
@@ -647,8 +848,6 @@ export class TrainWithLights {
         
         // 保存当前模型类型
         this.currentModelType = modelType;
-        
-        console.log(`[列车切换] 已切换到 ${modelType} 节车厢模型`);
         
         return modelType;
     }
@@ -663,561 +862,491 @@ export class TrainWithLights {
 }
 
 /**
- * 空气动力学流场系统（GPU 驱动）
+ * 空气动力学流场系统 — 风洞流线可视化
  *
- * 物理模型：列车沿 +X 方向运动，空气在列车坐标系下沿 -X 方向流动（从前向后）。
- * 采用势流近似构建参数化流线：
- *   1. 远场来流（-X 方向）
- *   2. 车头滞止分流：气流在 frontX 前绕过车体（上/下/左/右分流）
- *   3. 边界层贴附：气流沿车身侧/顶/底贴合流动
- *   4. 尾流汇聚：车尾 rearX 后形成汇聚尾涡
- *
- * 渲染：所有粒子位置由 GPU 顶点着色器根据 (uTime, uIntensity, 粒子参数) 计算，
- *       无 CPU 端逐帧几何更新，性能优异且效果连贯。
+ * 模拟汽车风洞测试中烟流线（smoke streamline）效果：
+ *   - 密集的发光流线紧贴车身，从前向后绕过车体
+ *   - 使用 TubeGeometry 构建管状流线，蓝色色自发光材质
+ *   - 车头滞止区抬升绕流 → 车身边界层附着 → 尾部涡流扩散
+ *   - 流线均匀分布：顶部、侧面、底部全面覆盖
  */
 class AeroFlowField {
     constructor(dims, scale = 1.5) {
         this.scale = scale;
         this.group = new THREE.Group();
 
-        // 归一化列车几何（防止边界框异常值导致流场失真）
         const safe = (v, fallback) => (isFinite(v) && Math.abs(v) < 1e4) ? v : fallback;
         this.dim = {
-            length: safe(dims.length, 4 * scale),
-            width:  safe(dims.width, 1.4 * scale),
-            height: safe(dims.height, 0.65 * scale),
-            rearX:  safe(dims.rearX, -2 * scale),
-            frontX: safe(dims.frontX, 2 * scale),
-            topY:   safe(dims.topY, 0.5 * scale),
+            length:  safe(dims.length, 4 * scale),
+            width:   safe(dims.width, 1.4 * scale),
+            height:  safe(dims.height, 0.65 * scale),
+            rearX:   safe(dims.rearX, -2 * scale),
+            frontX:  safe(dims.frontX, 2 * scale),
+            topY:    safe(dims.topY, 0.5 * scale),
             bottomY: safe(dims.bottomY, 0)
         };
 
-        // 流场半径参考（车体半宽、半高）
         this.halfW = this.dim.width * 0.5;
         this.halfH = this.dim.height * 0.5;
         this.midY = (this.dim.topY + this.dim.bottomY) * 0.5;
 
-        // 生成参数化流线（多条），每条流线由若干采样点定义
-        this.streamlines = this._buildStreamlines();
+        // 曲线存储（用于粒子动画）
+        this._curves = [];
+        this._brightCurveIndices = new Set();
 
-        // 1) 骨架流线（带沿线能量脉冲的 Line）
-        this._buildStreamLineMeshes();
+        // 构建流线（使用4段式控制点法：远场→绕流→附着→尾涡）
+        this._buildStreamlineTubes();
 
-        // 2) 流线粒子（GPU Points，沿流线流动）
+        // 构建沿流线运动的发光粒子
         this._buildFlowParticles();
 
-        // 3) 车头滞止区高压发光（Sprite 脉冲）
-        this._buildStagnationGlow();
-
-        // 4) 车尾尾涡发光环（Sprite）
-        this._buildWakeGlow();
-
-        // 全局 uniform
         this._time = 0;
         this._intensity = 0;
         this._visible = true;
+
+        // 预分配粒子位置更新用的临时向量
+        this._tmpVec = new THREE.Vector3();
     }
 
     /**
-     * 构建参数化流线集合
-     * 每条流线返回采样点数组（Vector3），从远场前方(frontX+lead)流向车尾后方(rearX-trail)
-     * region: 'top' | 'side+/- ' | 'bottom'
+     * 构建紧贴车身的管状流线网格
+     *
+     * 真实风洞空气动力学行为：
+     *   1. 远场来流平行于 X 轴，从前方均匀流入
+     *   2. 到达车头滞止区时，气流分叉：上方抬升、两侧绕流、下方下潜
+     *   3. 车身中段：气流紧贴表面流动（边界层附着）
+     *   4. 车尾：气流分离，形成下沉汇聚尾涡
+     *
+     * SU7 风格：使用自定义 ShaderMaterial 创建沿流线方向流动的条纹脉冲效果
      */
-    _buildStreamlines() {
+    _buildStreamlineTubes() {
         const d = this.dim;
         const s = this.scale;
-        const lines = [];
 
-        const lead = d.length * 1.6;   // 车头前流场长度
-        const trail = d.length * 2.2;  // 车尾后流场长度
-        const clearance = Math.max(0.25 * s, this.halfW * 0.35); // 越流间隙
+        // 车头前来流长度（车长的 5%）
+        const lead = d.length * 0.05;
+        // 尾流长度（车长的 5%）
+        const trail = d.length * 0.05;
+        // 流线半径
+        const tubeRadius = s * 0.018;
+        const tubeSegments = 6;
+        const curveSegments = 120;
 
-        // 生成函数：给定目标横向偏移 zTarget 与高度 region，构造一条流线
-        const make = (zTarget, yMode, yParam, label) => {
+        // ---- 自定义 Shader 材质：沿流线方向 UV.x 驱动流动条纹+脉冲 ----
+        const flowVertexShader = /* glsl */`
+            varying vec2 vUv;
+            varying vec3 vWorldPos;
+            varying vec3 vNormal;
+            void main() {
+                vUv = uv;
+                vec4 worldPos = modelMatrix * vec4(position, 1.0);
+                vWorldPos = worldPos.xyz;
+                vNormal = normalize(mat3(modelMatrix) * normal);
+                vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                gl_Position = projectionMatrix * mvPosition;
+            }
+        `;
+
+        // fragment shader：UV.x 沿流线方向，配合时间形成流动脉冲
+        const flowFragmentShader = /* glsl */`
+            varying vec2 vUv;
+            varying vec3 vWorldPos;
+            varying vec3 vNormal;
+            uniform float uTime;
+            uniform float uIntensity;
+            uniform float uFlowSpeed;
+            uniform vec3 uColorBase;
+            uniform vec3 uColorBright;
+            void main() {
+                // 沿流线的流动相位移
+                float wave = sin(vUv.x * 18.0 - uTime * uFlowSpeed * 3.0) * 0.5 + 0.5;
+                // 第二组波，不同频率
+                float wave2 = sin(vUv.x * 8.0 - uTime * uFlowSpeed * 1.7 + 1.8) * 0.5 + 0.5;
+                // 脉冲群（局部亮斑沿流线移动）
+                float pulse = sin(vUv.x * 5.0 - uTime * uFlowSpeed * 2.2) * 0.5 + 0.5;
+                pulse = pow(pulse, 4.0);  // 锐化为亮斑
+                // 径向衰减：管边缘透明，中心亮
+                float radial = 1.0 - abs(vUv.y - 0.5) * 2.0;
+                radial = pow(radial, 1.5);
+                // 沿流线渐变：近端稍亮，远端淡出
+                float alongFade = 1.0 - smoothstep(0.7, 1.0, vUv.x);
+                // 前端入口淡入
+                float frontFade = smoothstep(0.0, 0.05, vUv.x);
+                // 合成
+                float brightness = (0.3 + 0.7 * wave * 0.6 + wave2 * 0.3 + pulse * 0.8)
+                                    * radial * alongFade * frontFade;
+                // 脉冲尖峰使颜色偏亮
+                vec3 col = mix(uColorBase, uColorBright, pulse * 0.9 + wave * 0.35);
+                // 尾部区域微蓝
+                col = mix(col, uColorBase, vUv.x * 0.45);
+                float alpha = brightness * uIntensity * 0.75;
+                gl_FragColor = vec4(col, alpha);
+            }
+        `;
+
+        // 创建两种材质：常规和亮色
+        const makeShaderMat = () => new THREE.ShaderMaterial({
+            uniforms: {
+                uTime:      { value: 0 },
+                uIntensity: { value: 0 },
+                uFlowSpeed: { value: 0.6 },
+                uColorBase: { value: new THREE.Color(0x4488cc) },
+                uColorBright: { value: new THREE.Color(0xaaddff) },
+            },
+            vertexShader: flowVertexShader,
+            fragmentShader: flowFragmentShader,
+            transparent: true,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+            toneMapped: false
+        });
+
+        const tubeShaderMat = makeShaderMat();
+        const brightShaderMat = makeShaderMat();
+
+        // 存储所有 ShaderMaterial 用于 update
+        this._shaderMaterials = [tubeShaderMat, brightShaderMat];
+        this.tubeMaterials = [tubeShaderMat, brightShaderMat];
+        this.tubeMeshes = [];
+
+        /**
+         * 气动影响函数
+         */
+        const noseRamp = (x) => {
+            const stagDist = d.length * 0.25 * 0.25;
+            const noseFieldLen = d.length * 0.55;
+            const dx = d.frontX - x;
+            return this._sigmoid(dx, stagDist, noseFieldLen * 0.12);
+        };
+
+        const tailRamp = (x) => {
+            const tailFieldLen = d.length * 0.7;
+            const dx = x - d.rearX;
+            return this._sigmoid(dx, 0, tailFieldLen * 0.2);
+        };
+
+        /**
+         * 生成一条管状流线
+         */
+        const makeTube = (zBase, region, layerDist, yFrac, bright) => {
             const pts = [];
-            const segs = 48;
+            const blThick = s * (0.04 + layerDist * 0.2);
+
             const xStart = d.frontX + lead;
             const xEnd = d.rearX - trail;
-            for (let i = 0; i <= segs; i++) {
-                const t = i / segs;
+            const bodyHalfH = d.height * 0.5;
+            const bodyHalfW = this.halfW;
+            const bodyTop = d.topY;
+            const bodyBot = d.bottomY;
+            const stagDist = d.length * 0.25 * 0.25;
+            const noseFieldLen = d.length * 0.55;
+
+            for (let i = 0; i <= curveSegments; i++) {
+                const t = i / curveSegments;
                 const x = xStart + (xEnd - xStart) * t;
 
-                // 沿 X 的“影响因子”：在车体范围内为1，向外衰减
-                // nose 影响在 frontX 附近，tail 影响在 rearX 附近
-                const noseInf = this._gauss(x - d.frontX, d.length * 0.25);
-                const tailInf = this._gauss(x - d.rearX, d.length * 0.3);
+                const nInf = noseRamp(x);
+                const tInf = tailRamp(x);
 
                 let y, z;
-                if (yMode === 'top') {
-                    // 顶部气流：在车头抬升越过车顶，车尾下沉汇入尾流
-                    const top = d.topY + clearance * (0.6 + yParam);
-                    const base = this.midY + d.height * 0.6;
-                    y = base + (top - base) * noseInf;
-                    y -= clearance * 0.5 * tailInf * yParam; // 尾部下沉
-                } else if (yMode === 'bottom') {
-                    const bot = d.bottomY - clearance * (0.4 + yParam * 0.5);
-                    const base = this.midY - d.height * 0.6;
-                    y = base + (bot - base) * noseInf;
-                    y += clearance * 0.4 * tailInf;
-                } else { // side
-                    y = this.midY + yParam * d.height * 0.5;
-                    // 侧向气流在车头处向外绕，车尾向内汇聚
-                    y += Math.sin(t * Math.PI) * 0.02 * s * (1 - yParam);
-                }
 
-                if (yMode === 'side') {
-                    const sideBase = zTarget;
-                    const bowOut = clearance * (0.5 + Math.abs(zTarget) / (this.halfW + 1e-3));
-                    // 车头向外扩张，车尾向中心汇聚
-                    z = sideBase * (1 + bowOut * noseInf * 0.6) * (1 - 0.35 * tailInf);
-                    z += Math.sin(t * Math.PI * 2) * 0.015 * s * tailInf; // 尾部轻微抖动
+                if (region === 'top') {
+                    const freestreamY = bodyTop + blThick * 2.5;
+                    const noseLift = blThick * 3.5;
+                    const bodyY = bodyTop + blThick * 0.25;
+
+                    y = freestreamY;
+                    y += noseLift * nInf;
+                    y = y + (bodyY - y) * this._sigmoid(nInf, 0.5, 0.08);
+                    y -= blThick * 2.0 * tInf * (1.0 - layerDist * 0.5);
+
+                    z = zBase;
+                    if (Math.abs(zBase) > bodyHalfW * 0.3) {
+                        const sideDeflect = Math.sign(zBase) * blThick * 0.6 * nInf * (1 - tInf);
+                        z += sideDeflect * (1.0 - this._sigmoid(nInf, 0.7, 0.1));
+                    }
+                } else if (region === 'side') {
+                    const fsY = this.midY + yFrac * bodyHalfH * 1.1;
+                    const bodyY = this.midY + yFrac * bodyHalfH * 0.95;
+
+                    y = fsY;
+                    y += (bodyY - fsY) * nInf * 0.6;
+                    y += (fsY - bodyY) * tInf * 0.3;
+
+                    const fsZ = zBase;
+                    const bodyZ = Math.sign(zBase) * (bodyHalfW + blThick * 0.08);
+                    const noseBow = Math.sign(zBase) * (bodyHalfW + blThick * 2.8);
+
+                    z = fsZ;
+                    z += (noseBow - fsZ) * nInf;
+                    z += (bodyZ - z) * this._sigmoid(nInf, 0.5, 0.06);
+                    const wakeInward = -Math.sign(zBase) * blThick * 1.5 * tInf;
+                    z += wakeInward;
                 } else {
-                    z = zTarget + Math.sin(t * Math.PI * 3 + yParam * 5) * 0.01 * s * (noseInf + tailInf);
+                    const fsY = bodyBot - blThick * 2.0;
+                    const bodyY = bodyBot - blThick * 0.25;
+
+                    y = fsY;
+                    y += (bodyY - fsY) * nInf;
+                    y += blThick * 1.2 * tInf * (1.0 - layerDist * 0.4);
+                    z = zBase;
                 }
 
                 pts.push(new THREE.Vector3(x, y, z));
             }
-            lines.push({ points: pts, label });
-            return lines[lines.length - 1];
+
+            const curve = new THREE.CatmullRomCurve3(pts);
+            // 复制一份用于粒子：粒子版本需要更长的尾流
+            const particlePts = [];
+            for (let i = 0; i <= curveSegments; i++) {
+                const t = i / curveSegments;
+                const x = xStart + (xEnd - trail * 0.4 - xStart) * t;
+                const nInf = noseRamp(x);
+                const tInf = tailRamp(x);
+                let y, z;
+
+                if (region === 'top') {
+                    const freestreamY = bodyTop + blThick * 2.5;
+                    const noseLift = blThick * 3.5;
+                    const bodyY = bodyTop + blThick * 0.25;
+                    y = freestreamY;
+                    y += noseLift * nInf;
+                    y = y + (bodyY - y) * this._sigmoid(nInf, 0.5, 0.08);
+                    y -= blThick * 2.0 * tInf * (1.0 - layerDist * 0.5);
+                    z = zBase;
+                    if (Math.abs(zBase) > bodyHalfW * 0.3) {
+                        const sideDeflect = Math.sign(zBase) * blThick * 0.6 * nInf * (1 - tInf);
+                        z += sideDeflect * (1.0 - this._sigmoid(nInf, 0.7, 0.1));
+                    }
+                } else if (region === 'side') {
+                    const fsY = this.midY + yFrac * bodyHalfH * 1.1;
+                    const bodyY = this.midY + yFrac * bodyHalfH * 0.95;
+                    y = fsY;
+                    y += (bodyY - fsY) * nInf * 0.6;
+                    y += (fsY - bodyY) * tInf * 0.3;
+                    const fsZ = zBase;
+                    const bodyZ = Math.sign(zBase) * (bodyHalfW + blThick * 0.08);
+                    const noseBow = Math.sign(zBase) * (bodyHalfW + blThick * 2.8);
+                    z = fsZ;
+                    z += (noseBow - fsZ) * nInf;
+                    z += (bodyZ - z) * this._sigmoid(nInf, 0.5, 0.06);
+                    const wakeInward = -Math.sign(zBase) * blThick * 1.5 * tInf;
+                    z += wakeInward;
+                } else {
+                    const fsY = bodyBot - blThick * 2.0;
+                    const bodyY = bodyBot - blThick * 0.25;
+                    y = fsY;
+                    y += (bodyY - fsY) * nInf;
+                    y += blThick * 1.2 * tInf * (1.0 - layerDist * 0.4);
+                    z = zBase;
+                }
+                particlePts.push(new THREE.Vector3(x, y, z));
+            }
+
+            const particleCurve = new THREE.CatmullRomCurve3(particlePts);
+            this._curves.push(particleCurve);
+            if (bright) this._brightCurveIndices.add(this._curves.length - 1);
+
+            const tubeGeo = new THREE.TubeGeometry(curve, curveSegments * 2, tubeRadius, tubeSegments, false);
+            const mat = bright ? brightShaderMat : tubeShaderMat;
+            const tubeMesh = new THREE.Mesh(tubeGeo, mat);
+            tubeMesh.renderOrder = 6;
+            tubeMesh.name = `flow-${region}-${layerDist.toFixed(2)}`;
+            this.group.add(tubeMesh);
+            this.tubeMeshes.push(tubeMesh);
         };
 
-        // 顶部多条（增加密度）
-        make(0, 'top', 0.0, 'top0');
-        make(this.halfW * 0.15, 'top', 0.08, 'topR1');
-        make(-this.halfW * 0.15, 'top', 0.08, 'topL1');
-        make(this.halfW * 0.25, 'top', 0.15, 'topR2');
-        make(-this.halfW * 0.25, 'top', 0.15, 'topL2');
-        make(this.halfW * 0.35, 'top', 0.22, 'topR3');
-        make(-this.halfW * 0.35, 'top', 0.22, 'topL3');
-        make(this.halfW * 0.45, 'top', 0.3, 'topRR');
-        make(-this.halfW * 0.45, 'top', 0.3, 'topLL');
+        // ---- 流线布局 ----
 
-        // 侧面（左右对称，增加列数和层数）
-        const sideCols = [0.45, 0.55, 0.65, 0.75, 0.85, 0.95];  // 6列
-        const sideHeights = [0.4, 0.2, 0.0, -0.2, -0.4];  // 5层
-        for (const c of sideCols) {
-            for (const sign of [1, -1]) {
-                const z = sign * (this.halfW + clearance * (c - 0.5) * 0.6);
-                for (const h of sideHeights) {
-                    make(z, 'side', h, `side${sign > 0 ? 'R' : 'L'}c${c}h${h}`);
+        // 顶部：水平分层流线
+        const topCols = 7;
+        const topLayers = 4;
+        for (let layer = 0; layer < topLayers; layer++) {
+            const lDist = layer / (topLayers - 1 + 0.01);
+            for (let ci = 0; ci < topCols; ci++) {
+                const z = (ci / (topCols - 1) - 0.5) * this.halfW * 1.8;
+                makeTube(z, 'top', lDist, 0, layer === 0);
+            }
+        }
+
+        // 侧面：左右对称的垂向分层流线
+        const sideCols = 8;
+        const sideHeights = 6;
+        const sideLayers = 3;
+        for (let layer = 0; layer < sideLayers; layer++) {
+            const lDist = layer / (sideLayers - 1 + 0.01);
+            for (let ci = 0; ci < sideCols; ci++) {
+                const zDist = 0.03 + (ci / (sideCols - 1)) * 0.8;
+                for (const sign of [1, -1]) {
+                    const zb = sign * (this.halfW + zDist * s * 0.35);
+                    for (let hi = 0; hi < sideHeights; hi++) {
+                        const yFrac = (hi / (sideHeights - 1) - 0.5) * 2.0;
+                        makeTube(zb, 'side', lDist, yFrac, layer === 0 && ci < 2);
+                    }
                 }
             }
         }
 
         // 底部
-        make(0, 'bottom', 0.0, 'bot0');
-        make(this.halfW * 0.3, 'bottom', 0.1, 'botR');
-        make(-this.halfW * 0.3, 'bottom', 0.1, 'botL');
-
-        return lines;
+        const botCols = 5;
+        for (let ci = 0; ci < botCols; ci++) {
+            const z = (ci / (botCols - 1) - 0.5) * this.halfW * 1.4;
+            makeTube(z, 'bottom', 0.3, 0, false);
+            makeTube(z, 'bottom', 0.7, 0, false);
+        }
     }
 
-    /** 高斯函数（用于影响因子） */
     _gauss(x, sigma) {
         return Math.exp(-(x * x) / (2 * sigma * sigma));
     }
 
     /**
-     * 构建骨架流线网格：每条流线一条 Line，使用自定义着色器做沿线流动的能量脉冲
+     * S 形平滑过渡函数
      */
-    _buildStreamLineMeshes() {
-        // 合并所有流线顶点到单一 BufferGeometry（性能优化）
-        const allPts = [];
-        this.streamlines.forEach((sl) => {
-            sl.points.forEach((p) => allPts.push(p.x, p.y, p.z));
-        });
-
-        const geo = new THREE.BufferGeometry();
-        geo.setAttribute('position', new THREE.Float32BufferAttribute(allPts, 3));
-        // 每个顶点存储所属流线的 id 与沿线归一化位置，用于沿线脉冲着色
-        const lineId = new Float32Array(allPts.length / 3);
-        const along = new Float32Array(allPts.length / 3);
-        let vi = 0;
-        this.streamlines.forEach((sl, li) => {
-            const n = sl.points.length;
-            for (let i = 0; i < n; i++) {
-                lineId[vi] = li;
-                along[vi] = i / (n - 1);
-                vi++;
-            }
-        });
-        geo.setAttribute('aLineId', new THREE.Float32BufferAttribute(lineId, 1));
-        geo.setAttribute('aAlong', new THREE.Float32BufferAttribute(along, 1));
-
-        const mat = new THREE.ShaderMaterial({
-            transparent: true,
-            depthWrite: false,
-            blending: THREE.AdditiveBlending,
-            uniforms: {
-                uTime: { value: 0 },
-                uIntensity: { value: 0 },
-                uVisible: { value: 1 },
-                uLineCount: { value: this.streamlines.length },
-                uColorA: { value: new THREE.Color(0xeeeeee) }, // 白灰（前段）
-                uColorB: { value: new THREE.Color(0x888888) }  // 深灰（尾流）
-            },
-            vertexShader: /* glsl */`
-                attribute float aLineId;
-                attribute float aAlong;
-                uniform float uTime;
-                uniform float uIntensity;
-                uniform float uLineCount;
-                varying float vAlong;
-                varying float vLineId;
-                varying float vPulse;
-
-                void main() {
-                    vAlong = aAlong;
-                    vLineId = aLineId / uLineCount;
-
-                    // 沿线流动的能量脉冲：每条线不同相位/速度
-                    float speed = 0.25 + fract(aLineId * 0.137) * 0.35;
-                    float phase = fract(aLineId * 0.917) * 6.2831;
-                    float pos = fract(aAlong * 1.0 - uTime * speed * (0.3 + uIntensity * 1.4) + phase);
-                    // 脉冲峰：在 pos≈0.5 处最亮
-                    float pulse = smoothstep(0.35, 0.5, pos) * smoothstep(0.65, 0.5, pos);
-                    vPulse = pulse;
-
-                    vec3 transformed = position;
-                    // 轻微扰动模拟湍流（沿法线方向不易，这里用小幅位移）
-                    float w = sin(uTime * 3.0 + aAlong * 12.0 + aLineId) * 0.01 * uIntensity;
-                    transformed.y += w;
-                    transformed.z += cos(uTime * 2.0 + aAlong * 9.0 + aLineId * 1.7) * 0.01 * uIntensity;
-
-                    gl_Position = projectionMatrix * modelViewMatrix * vec4(transformed, 1.0);
-                }
-            `,
-            fragmentShader: /* glsl */`
-                uniform float uTime;
-                uniform float uIntensity;
-                uniform float uVisible;
-                uniform vec3 uColorA;
-                uniform vec3 uColorB;
-                varying float vAlong;
-                varying float vLineId;
-                varying float vPulse;
-
-                void main() {
-                    // 颜色：前段白亮，后段深灰
-                    vec3 baseCol = mix(uColorA, uColorB, clamp(vAlong, 0.0, 1.0));
-                    // 脉冲提亮（白灰烟雾）
-                    vec3 col = baseCol + vPulse * 0.6 * vec3(1.0, 1.0, 1.0);
-                    // 基础流线透明度 + 脉冲叠加
-                    float alpha = (0.10 + 0.55 * vPulse) * uIntensity;
-                    alpha *= uVisible;
-                    // 首尾淡出，避免硬截断
-                    alpha *= smoothstep(0.0, 0.06, vAlong) * smoothstep(1.0, 0.92, vAlong);
-                    gl_FragColor = vec4(col, alpha);
-                }
-            `
-        });
-
-        this.streamlineLines = new THREE.LineSegments(geo, mat);
-        // LineSegments 成对绘制顶点：把每条流线的相邻点构造成线段索引序列
-        const idxGlobal = [];
-        let base = 0;
-        this.streamlines.forEach((sl) => {
-            for (let i = 0; i < sl.points.length - 1; i++) {
-                idxGlobal.push(base + i, base + i + 1);
-            }
-            base += sl.points.length;
-        });
-        geo.setIndex(idxGlobal);
-
-        this.streamlineMat = mat;
-        this.group.add(this.streamlineLines);
+    _sigmoid(x, center, width) {
+        return 1.0 / (1.0 + Math.exp(-(x - center) / (width + 0.0001)));
     }
 
     /**
-     * 构建流线粒子系统：大量粒子在多条流线上流动
-     * 每个粒子绑定一条流线（aLineId）与一个起始相位（aPhase），
-     * 顶点着色器采样流线折线得到当前位置。
+     * 构建沿流线运动的发光粒子系统
+     *
+     * 每一条流线分配 N 个粒子，粒子沿曲线前进，
+     * 速度略快于管状流的流动条纹，模拟风洞烟线中的亮点
      */
     _buildFlowParticles() {
-        const PCOUNT = 1100;
-        const s = this.scale;
-        const positions = new Float32Array(PCOUNT * 3); // 占位，实际由着色器计算
-        const aLineId = new Float32Array(PCOUNT);
-        const aPhase = new Float32Array(PCOUNT);
-        const aSize = new Float32Array(PCOUNT);
-        const aSeed = new Float32Array(PCOUNT);
+        if (this._curves.length === 0) return;
 
-        // 流线总点数与每条流线点数列表（供着色器采样）
-        this._slCounts = this.streamlines.map(sl => sl.points.length);
-        this._slTotal = this.streamlines.reduce((a, sl) => a + sl.points.length, 0);
+        // 每条曲线分配粒子数
+        const particlesPerCurve = 8;
+        const totalParticles = this._curves.length * particlesPerCurve;
 
-        // 把所有流线点打包进 DataTexture 供顶点着色器采样（RGBA32F 风格：用多张纹理更复杂，
-        // 这里改用一个统一的位置数组作为 attribute「每个粒子单独不能存整条线」，因此用纹理）
-        // 构建 RGBA 数据：xy 存位置，z 存 y，w 存下一个点的索引提示——简化：用 RGB 三通道一张纹理
-        const texData = new Float32Array(this._slTotal * 4);
-        let p = 0;
-        this.streamlines.forEach((sl) => {
-            sl.points.forEach((pt) => {
-                texData[p * 4 + 0] = pt.x;
-                texData[p * 4 + 1] = pt.y;
-                texData[p * 4 + 2] = pt.z;
-                texData[p * 4 + 3] = 1.0;
-                p++;
-            }
-            );
-        });
-        const tex = new THREE.DataTexture(texData, this._slTotal, 1, THREE.RGBAFormat, THREE.FloatType);
-        tex.minFilter = THREE.LinearFilter;
-        tex.magFilter = THREE.LinearFilter;
-        tex.wrapS = THREE.ClampToEdgeWrapping;
-        tex.wrapT = THREE.ClampToEdgeWrapping;
-        tex.needsUpdate = true;
-        this._streamTex = tex;
+        const positions = new Float32Array(totalParticles * 3);
+        // 每个粒子存储 (curveIndex, paramT, speed, seed) 用于更新
+        this._particleData = new Float32Array(totalParticles * 4);
+        const sizes = new Float32Array(totalParticles);
+        const colors = new Float32Array(totalParticles * 3);
 
-        // 每条流线起始偏移
-        const slOffsets = [];
-        let acc = 0;
-        for (const c of this._slCounts) { slOffsets.push(acc); acc += c; }
+        const colorBright = new THREE.Color(0xddeeff);
+        const colorDim = new THREE.Color(0x5599cc);
 
-        for (let i = 0; i < PCOUNT; i++) {
-            const li = Math.floor(Math.random() * this.streamlines.length);
-            aLineId[i] = li;
-            aPhase[i] = Math.random();
-            aSize[i] = (0.3 + Math.random() * 1) * s * 0.8;
-            aSeed[i] = Math.random();
-            positions[i * 3 + 0] = 0;
-            positions[i * 3 + 1] = 0;
-            positions[i * 3 + 2] = 0;
+        for (let i = 0; i < totalParticles; i++) {
+            const curveIdx = i % this._curves.length;
+            const curve = this._curves[curveIdx];
+            // 随机初始位置（沿曲线均匀分布）
+            const t = Math.random();
+            const pt = curve.getPointAt(t);
+
+            positions[i * 3] = pt.x;
+            positions[i * 3 + 1] = pt.y;
+            positions[i * 3 + 2] = pt.z;
+
+            // 粒子数据：(curveIndex, paramT, speedMultiplier, phase)
+            this._particleData[i * 4] = curveIdx;
+            this._particleData[i * 4 + 1] = t;
+            this._particleData[i * 4 + 2] = 0.6 + Math.random() * 1.4;  // 速度差异
+            this._particleData[i * 4 + 3] = Math.random() * Math.PI * 2; // 相位
+
+            // 粒子大小：亮色曲线的大粒子
+            const isBright = this._brightCurveIndices.has(curveIdx);
+            sizes[i] = isBright ? (0.015 + Math.random() * 0.025) : (0.008 + Math.random() * 0.014);
+
+            // 颜色
+            const col = isBright ? colorBright : colorDim;
+            colors[i * 3] = col.r * (0.7 + Math.random() * 0.3);
+            colors[i * 3 + 1] = col.g * (0.7 + Math.random() * 0.3);
+            colors[i * 3 + 2] = col.b * (0.7 + Math.random() * 0.3);
         }
 
-        const geo = new THREE.BufferGeometry();
-        geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        geo.setAttribute('aLineId', new THREE.BufferAttribute(aLineId, 1));
-        geo.setAttribute('aPhase', new THREE.BufferAttribute(aPhase, 1));
-        geo.setAttribute('aSize', new THREE.BufferAttribute(aSize, 1));
-        geo.setAttribute('aSeed', new THREE.BufferAttribute(aSeed, 1));
+        const particleGeo = new THREE.BufferGeometry();
+        particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        particleGeo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+        particleGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-        const mat = new THREE.ShaderMaterial({
-            transparent: true,
-            depthWrite: false,
-            blending: THREE.AdditiveBlending,
-            uniforms: {
-                uTime: { value: 0 },
-                uIntensity: { value: 0 },
-                uVisible: { value: 1 },
-                uTex: { value: tex },
-                uTexSize: { value: this._slTotal },
-                uPixelRatio: { value: window.devicePixelRatio || 1 },
-                uColorHead: { value: new THREE.Color(0xf0f0f0) }, // 车头白色烟雾
-                uColorMid: { value: new THREE.Color(0xcccccc) },  // 车身浅灰
-                uColorTail: { value: new THREE.Color(0x777777) }  // 尾涡深灰
-            }
-        });
-
-        // 流线条数
-        const nLines = this.streamlines.length;
-
-        // 查表纹理：根据 aLineId 得到该流线的 offset/count（GLSL 用 texture2D 采样，避免动态索引限制）
-        // 这里用一个纹理辅助：把 (offset,count) 编码到一张小 DataTexture
-        const ocData = new Float32Array(nLines * 4);
-        slOffsets.forEach((v, i) => {
-            ocData[i * 4 + 0] = v;            // offset
-            ocData[i * 4 + 1] = this._slCounts[i]; // count
-            ocData[i * 4 + 2] = 0;
-            ocData[i * 4 + 3] = 0;
-        });
-        const ocTex = new THREE.DataTexture(ocData, nLines, 1, THREE.RGBAFormat, THREE.FloatType);
-        ocTex.minFilter = THREE.NearestFilter;
-        ocTex.magFilter = THREE.NearestFilter;
-        ocTex.needsUpdate = true;
-        this._ocTex = ocTex;
-        mat.uniforms.uOC = { value: ocTex };
-        mat.uniforms.uLineCount = { value: nLines };
-
-        mat.vertexShader = /* glsl */`
-            attribute float aLineId;
-            attribute float aPhase;
-            attribute float aSize;
-            attribute float aSeed;
-            uniform float uTime;
-            uniform float uIntensity;
-            uniform sampler2D uTex;
-            uniform float uTexSize;
-            uniform sampler2D uOC;
-            uniform float uLineCount;
-            uniform float uPixelRatio;
-            varying float vAlong;
-            varying float vSpeed;
-
-            // 从 uTex 中按归一化坐标采样流线点（线性插值相邻点）
-            vec3 sampleLine(float globalT, float offset, float count) {
-                float local = clamp(globalT, 0.0, 1.0) * (count - 1.0);
-                float u = (offset + local + 0.5) / uTexSize;
-                vec3 p = texture2D(uTex, vec2(u, 0.5)).rgb;
-                return p;
-            }
-
-            void main() {
-                // 取该流线的 offset/count
-                vec2 oc = texture2D(uOC, vec2((aLineId + 0.5) / uLineCount, 0.5)).rg;
-                float offset = oc.x;
-                float count = oc.y;
-
-                // 粒子沿流线流动的归一化位置 [0,1]
-                float speed = 0.08 + fract(aSeed * 7.31) * 0.12;
-                float flowSpeed = speed * (0.4 + uIntensity * 2.2);
-                float t = fract(aPhase + uTime * flowSpeed);
-                vAlong = t;
-                vSpeed = flowSpeed;
-
-                vec3 p = sampleLine(t, offset, count);
-
-                // 细微湍流抖动
-                float jitter = 0.015 * uIntensity;
-                p.x += sin(uTime * 4.0 + aSeed * 30.0) * jitter;
-                p.y += cos(uTime * 3.5 + aSeed * 20.0) * jitter * 0.7;
-                p.z += sin(uTime * 3.0 + aSeed * 25.0) * jitter * 0.7;
-
-                vec4 mvPosition = modelViewMatrix * vec4(p, 1.0);
-                // 尾部粒子（t 接近 1）放大，模拟尾涡扩散
-                float sizeBoost = 1.0 + smoothstep(0.7, 1.0, t) * 1.5;
-                gl_PointSize = aSize * sizeBoost * uPixelRatio * (260.0 / -mvPosition.z);
-                gl_Position = projectionMatrix * mvPosition;
-            }
-        `;
-
-        mat.fragmentShader = /* glsl */`
-            uniform float uIntensity;
-            uniform float uVisible;
-            uniform vec3 uColorHead;
-            uniform vec3 uColorMid;
-            uniform vec3 uColorTail;
-            varying float vAlong;
-            varying float vSpeed;
-
-            void main() {
-                // 圆形软粒子
-                vec2 uv = gl_PointCoord - 0.5;
-                float r = length(uv);
-                if (r > 0.5) discard;
-                float core = smoothstep(0.5, 0.0, r);
-                float glow = pow(core, 2.2);
-
-                // 颜色：前段白 → 中段浅灰 → 尾段深灰
-                vec3 col;
-                if (vAlong < 0.5) {
-                    col = mix(uColorHead, uColorMid, vAlong / 0.5);
-                } else {
-                    col = mix(uColorMid, uColorTail, (vAlong - 0.5) / 0.5);
-                }
-                // 流速越快越亮
-                col += glow * 0.3 * vSpeed;
-
-                // 首尾淡入淡出，避免突兀
-                float edge = smoothstep(0.0, 0.08, vAlong) * smoothstep(1.0, 0.9, vAlong);
-                float alpha = glow * (0.45 + 0.55 * uIntensity) * edge * uVisible;
-                gl_FragColor = vec4(col, alpha);
-            }
-        `;
-
-        this.particlePoints = new THREE.Points(geo, mat);
-        this.particleMat = mat;
-        this.group.add(this.particlePoints);
-    }
-
-    /**
-     * 车头滞止区高压发光（Sprite，随强度脉冲）
-     */
-    _buildStagnationGlow() {
-        const s = this.scale;
+        // 圆形发光粒子贴图
         const canvas = document.createElement('canvas');
-        canvas.width = canvas.height = 128;
+        canvas.width = 32;
+        canvas.height = 32;
         const ctx = canvas.getContext('2d');
-        const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-        g.addColorStop(0, 'rgba(240,240,240,0.95)');
-        g.addColorStop(0.3, 'rgba(200,200,200,0.55)');
-        g.addColorStop(0.7, 'rgba(140,140,140,0.18)');
-        g.addColorStop(1, 'rgba(80,80,80,0)');
-        ctx.fillStyle = g;
-        ctx.fillRect(0, 0, 128, 128);
-        const tex = new THREE.CanvasTexture(canvas);
+        const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+        gradient.addColorStop(0, 'rgba(255,255,255,1)');
+        gradient.addColorStop(0.15, 'rgba(200,230,255,0.9)');
+        gradient.addColorStop(0.4, 'rgba(100,180,255,0.5)');
+        gradient.addColorStop(0.7, 'rgba(30,80,180,0.1)');
+        gradient.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 32, 32);
 
-        const mat = new THREE.SpriteMaterial({
-            map: tex,
-            transparent: true,
-            depthWrite: false,
+        const particleTex = new THREE.CanvasTexture(canvas);
+        particleTex.needsUpdate = true;
+
+        const particleMat = new THREE.PointsMaterial({
+            size: this.scale * 0.06,
+            map: particleTex,
             blending: THREE.AdditiveBlending,
-            opacity: 0
+            depthWrite: false,
+            depthTest: true,
+            transparent: true,
+            vertexColors: true,
+            sizeAttenuation: true,
+            toneMapped: false
         });
-        const sp = new THREE.Sprite(mat);
-        sp.position.set(this.dim.frontX, this.midY, 0);
-        const base = Math.max(1.2, this.halfH * 1.4);
-        sp.scale.set(base, base, 1);
-        this.stagnationSprite = sp;
-        this.stagnationMat = mat;
-        this.group.add(sp);
+        this._particleTexture = particleTex;
+        this._particleMaterial = particleMat;
+
+        this._particleSystem = new THREE.Points(particleGeo, particleMat);
+        this._particleSystem.renderOrder = 7;
+        this._particleSystem.name = 'flow-particles';
+        this.group.add(this._particleSystem);
     }
 
     /**
-     * 车尾尾涡发光（Sprite，柔光）
+     * 每帧更新
+     * @param {number} time - 时钟经过时间 (秒)
+     * @param {number} intensity - 0~1 强度
+     * @param {boolean} isMoving - 是否运动中
+     * @param {number} delta - 帧间隔 (秒)，用于粒子移动
      */
-    _buildWakeGlow() {
-        const canvas = document.createElement('canvas');
-        canvas.width = canvas.height = 128;
-        const ctx = canvas.getContext('2d');
-        const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-        g.addColorStop(0, 'rgba(180,180,180,0.6)');
-        g.addColorStop(0.5, 'rgba(110,110,110,0.25)');
-        g.addColorStop(1, 'rgba(60,60,60,0)');
-        ctx.fillStyle = g;
-        ctx.fillRect(0, 0, 128, 128);
-        const tex = new THREE.CanvasTexture(canvas);
-
-        const mat = new THREE.SpriteMaterial({
-            map: tex,
-            transparent: true,
-            depthWrite: false,
-            blending: THREE.AdditiveBlending,
-            opacity: 0
-        });
-        const sp = new THREE.Sprite(mat);
-        sp.position.set(this.dim.rearX, this.midY, 0);
-        const base = Math.max(1.6, this.halfH * 1.8);
-        sp.scale.set(base * 1.3, base * 1.1, 1);
-        this.wakeSprite = sp;
-        this.wakeMat = mat;
-        this.group.add(sp);
-    }
-
-    /**
-     * 每帧更新（由 TrainWithLights.updateWindEffect 调用）
-     * @param {number} time - 已运行时间（秒）
-     * @param {number} intensity - 0~1 速度强度
-     * @param {boolean} isMoving - 是否在运动
-     */
-    update(time, intensity, isMoving) {
+    update(time, intensity, isMoving, delta = 0.016) {
         this._time = time;
-        this._intensity = isMoving ? intensity : Math.max(0, this._intensity - 0.02);
+        this._intensity = isMoving ? intensity : Math.max(0, this._intensity - 0.015);
         const vis = this._visible ? 1 : 0;
+        const alpha = this._intensity * vis;
 
-        // 流线
-        if (this.streamlineMat) {
-            this.streamlineMat.uniforms.uTime.value = time;
-            this.streamlineMat.uniforms.uIntensity.value = this._intensity;
-            this.streamlineMat.uniforms.uVisible.value = vis;
-        }
-        // 粒子
-        if (this.particleMat) {
-            this.particleMat.uniforms.uTime.value = time;
-            this.particleMat.uniforms.uIntensity.value = this._intensity;
-            this.particleMat.uniforms.uVisible.value = vis;
-        }
-        // 车头脉冲：强度越高越亮，叠加呼吸
-        if (this.stagnationMat) {
-            const pulse = 0.6 + 0.4 * Math.sin(time * 6.0);
-            this.stagnationMat.opacity = this._intensity * 0.8 * pulse * vis;
-            const sc = (1 + 0.08 * pulse) * Math.max(1.2, this.halfH * 1.4);
-            this.stagnationSprite.scale.set(sc, sc, 1);
-        }
-        // 车尾
-        if (this.wakeMat) {
-            const wobble = 0.7 + 0.3 * Math.sin(time * 3.0 + 1.0);
-            this.wakeMat.opacity = this._intensity * 0.5 * wobble * vis;
+        // ---- 更新 Shader 管状流线 ----
+        const flowSpeed = 0.35 + alpha * 0.65;  // 慢速→快速
+        this._shaderMaterials.forEach(mat => {
+            mat.uniforms.uTime.value = time;
+            mat.uniforms.uIntensity.value = alpha;
+            mat.uniforms.uFlowSpeed.value = flowSpeed;
+        });
+
+        // ---- 更新沿流线运动的粒子 ----
+        if (this._particleSystem && this._particleData) {
+            const pos = this._particleSystem.geometry.attributes.position.array;
+            const dt = delta * flowSpeed * 0.25;  // 粒子沿曲线移动步长
+            const numParticles = this._particleData.length / 4;
+            const v = this._tmpVec;
+
+            for (let i = 0; i < numParticles; i++) {
+                const curveIdx = Math.floor(this._particleData[i * 4]);
+                const curve = this._curves[curveIdx];
+                if (!curve) continue;
+
+                // 更新参数 t，超出范围则循环
+                let t = this._particleData[i * 4 + 1] + dt * this._particleData[i * 4 + 2];
+                if (t > 1.0) t -= 1.0;
+                if (t < 0) t += 1.0;
+
+                this._particleData[i * 4 + 1] = t;
+                curve.getPointAt(t, v);
+
+                pos[i * 3] = v.x;
+                pos[i * 3 + 1] = v.y;
+                pos[i * 3 + 2] = v.z;
+            }
+
+            this._particleSystem.geometry.attributes.position.needsUpdate = true;
+            this._particleMaterial.opacity = alpha * 0.85;
         }
     }
 
@@ -1227,14 +1356,35 @@ class AeroFlowField {
     }
 
     dispose() {
-        this.group.traverse((obj) => {
-            if (obj.geometry) obj.geometry.dispose();
-            if (obj.material) {
-                if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
-                else obj.material.dispose();
+        // 清理管状流线
+        this.tubeMeshes.forEach(tm => {
+            if (tm.geometry) tm.geometry.dispose();
+            if (tm.material) {
+                if (tm.material.uniforms) {
+                    Object.values(tm.material.uniforms).forEach(u => {
+                        if (u.value && u.value.isTexture) u.value.dispose();
+                    });
+                }
+                tm.material.dispose();
             }
         });
-        if (this._streamTex) this._streamTex.dispose();
-        if (this._ocTex) this._ocTex.dispose();
+        this.tubeMeshes = [];
+        this.tubeMaterials = [];
+        this._shaderMaterials = [];
+        this._curves = [];
+        this._brightCurveIndices.clear();
+
+        // 清理粒子系统
+        if (this._particleSystem) {
+            if (this._particleSystem.geometry) this._particleSystem.geometry.dispose();
+            if (this._particleMaterial) this._particleMaterial.dispose();
+            this._particleSystem = null;
+            this._particleMaterial = null;
+        }
+        if (this._particleTexture) {
+            this._particleTexture.dispose();
+            this._particleTexture = null;
+        }
+        this._particleData = null;
     }
 }

@@ -153,6 +153,310 @@
             h1 { font-size: 1.8rem; }
             .link-btn { padding: 8px 20px; font-size: 1rem; }
         }
+
+        /* ===== 设置面板 ===== */
+        #settings-toggle {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            z-index: 9999;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: 1.5px solid rgba(255,255,255,0.35);
+            background: rgba(20,28,40,0.55);
+            backdrop-filter: blur(10px);
+            color: #fff;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.35s ease;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        #settings-toggle:hover {
+            background: rgba(40,50,70,0.75);
+            border-color: rgba(255,255,255,0.55);
+            transform: scale(1.08);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        #settings-toggle:active {
+            transform: scale(0.95);
+            transition: all 0.1s ease;
+        }
+        #settings-toggle svg {
+            width: 20px;
+            height: 20px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            transition: transform 0.5s ease;
+        }
+        #settings-panel.open + #settings-toggle svg,
+        .settings-open #settings-toggle svg {
+            transform: rotate(90deg);
+        }
+
+        /* 设置面板 */
+        #settings-panel {
+            position: fixed;
+            top: 0;
+            right: -320px;
+            width: 300px;
+            max-width: calc(100vw - 60px);
+            height: 100vh;
+            z-index: 9998;
+            background: rgba(15, 22, 36, 0.92);
+            backdrop-filter: blur(20px);
+            border-left: 1px solid rgba(255,255,255,0.12);
+            box-shadow: -8px 0 32px rgba(0,0,0,0.4);
+            padding: 70px 20px 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        #settings-panel.open {
+            right: 0;
+        }
+
+        /* 面板遮罩 */
+        #settings-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9997;
+            background: rgba(0,0,0,0);
+            pointer-events: none;
+            transition: background 0.4s ease;
+        }
+        #settings-overlay.active {
+            background: rgba(0,0,0,0.35);
+            pointer-events: auto;
+        }
+
+        /* 面板标题 */
+        #settings-panel .panel-title {
+            color: rgba(255,255,255,0.9);
+            font-size: 1.1rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            padding-bottom: 12px;
+            margin-bottom: 4px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* 设置分组 */
+        #settings-panel .setting-group {
+            padding: 6px 0;
+        }
+        #settings-panel .setting-group-label {
+            color: rgba(255,255,255,0.4);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            padding: 8px 4px 4px;
+            margin-bottom: 2px;
+        }
+
+        /* 开关行 */
+        #settings-panel .setting-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.04);
+            transition: background 0.2s;
+            cursor: pointer;
+            user-select: none;
+        }
+        #settings-panel .setting-row:hover {
+            background: rgba(255,255,255,0.08);
+        }
+
+        /* 开关行 - 纯信息行（不可点击） */
+        #settings-panel .setting-row.info-row {
+            cursor: default;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+        }
+        #settings-panel .setting-row.info-row:hover {
+            background: rgba(255,255,255,0.04);
+        }
+
+        #settings-panel .setting-row .setting-icon {
+            font-size: 1rem;
+            width: 22px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        #settings-panel .setting-row .setting-label {
+            flex: 1;
+            color: rgba(255,255,255,0.85);
+            font-size: 0.88rem;
+            margin-left: 8px;
+        }
+        #settings-panel .setting-row .setting-hint {
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.35);
+            margin-right: 6px;
+        }
+
+        /* Toggle 开关 */
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 26px;
+            flex-shrink: 0;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            inset: 0;
+            background: rgba(255,255,255,0.18);
+            border-radius: 26px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            left: 3px;
+            bottom: 3px;
+            background: #fff;
+            border-radius: 50%;
+            transition: all 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .toggle-switch input:checked + .toggle-slider {
+            background: linear-gradient(135deg, #4d8fd6, #3a6ea5);
+        }
+        .toggle-switch input:checked + .toggle-slider::before {
+            transform: translateX(18px);
+        }
+
+        /* 模型选择器 */
+        #settings-panel .model-selector {
+            display: flex;
+            gap: 8px;
+            width: 100%;
+        }
+        #settings-panel .model-btn {
+            flex: 1;
+            padding: 9px 0;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.18);
+            background: rgba(255,255,255,0.05);
+            color: rgba(255,255,255,0.7);
+            font-size: 0.85rem;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.25s;
+            font-family: inherit;
+        }
+        #settings-panel .model-btn:hover {
+            background: rgba(255,255,255,0.12);
+            border-color: rgba(255,255,255,0.3);
+        }
+        #settings-panel .model-btn.active {
+            background: linear-gradient(135deg, rgba(58,110,165,0.5), rgba(44,62,102,0.4));
+            border-color: rgba(100,160,220,0.6);
+            color: #fff;
+            font-weight: 600;
+            box-shadow: 0 2px 10px rgba(58,110,165,0.25);
+        }
+
+        /* 速度滑块 */
+        #speed-slider {
+            width: 100%;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255,255,255,0.15);
+            outline: none;
+            cursor: pointer;
+        }
+        #speed-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4d8fd6, #3a6ea5);
+            border: 2px solid rgba(255,255,255,0.5);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            transition: transform 0.15s;
+        }
+        #speed-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+        #settings-panel .speed-value {
+            color: rgba(255,255,255,0.9);
+            font-size: 0.9rem;
+            font-weight: 600;
+            min-width: 42px;
+            text-align: right;
+        }
+        #settings-panel .speed-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+        }
+
+        /* 面板回弹动效 */
+        #settings-panel::-webkit-scrollbar {
+            width: 3px;
+        }
+        #settings-panel::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.15);
+            border-radius: 2px;
+        }
+
+        /* 沉浸模式 */
+        body.immersive .container,
+        body.immersive .music-player,
+        body.immersive #particle-canvas,
+        body.immersive .bg_heart,
+        body.immersive #preloader {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transition: opacity 0.4s ease;
+        }
+
+        /* 沉浸模式下设置按钮变小变透明 */
+        body.immersive #settings-toggle {
+            width: 34px;
+            height: 34px;
+            background: rgba(20,28,40,0.25);
+            border-color: rgba(255,255,255,0.12);
+            opacity: 0.4;
+        }
+        body.immersive #settings-toggle:hover {
+            opacity: 0.85;
+            background: rgba(40,50,70,0.55);
+            border-color: rgba(255,255,255,0.35);
+        }
+
+        /* 有背景特效时 canvas 应该是透明的，让背景特效可见 */
+        #train-canvas { background: transparent; }
     </style>
     <link rel="stylesheet" href="music/music.css">
     <link rel="stylesheet" href="effects/particles.css">
@@ -160,7 +464,121 @@
 </head>
 <body>
     <canvas id="train-canvas"></canvas>
-    
+
+    <!-- 设置齿轮按钮 -->
+    <button id="settings-toggle" title="设置">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+
+    <!-- 设置面板 -->
+    <div id="settings-overlay"></div>
+    <div id="settings-panel">
+        <div class="panel-title">⚙️ 设置</div>
+
+        <div class="setting-group">
+            <div class="setting-group-label">模型</div>
+            <div class="setting-row info-row">
+                <div style="color:rgba(255,255,255,0.5);font-size:0.75rem;">动车组编组</div>
+                <div class="model-selector">
+                    <button class="model-btn active" data-model="8">8 节</button>
+                    <button class="model-btn" data-model="16">16 节</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <div class="setting-group-label">视图</div>
+            <div class="setting-row" data-key="immersive">
+                <span class="setting-icon">🔍</span>
+                <span class="setting-label">沉浸模式</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="toggle-immersive">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="setting-row" data-key="particles">
+                <span class="setting-icon">✨</span>
+                <span class="setting-label">粒子特效</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="toggle-particles" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="setting-row" data-key="hearts">
+                <span class="setting-icon">💖</span>
+                <span class="setting-label">爱心特效</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="toggle-hearts" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <div class="setting-group-label">场景</div>
+            <div class="setting-row" data-key="car">
+                <span class="setting-icon">🚗</span>
+                <span class="setting-label">SU7 汽车模型</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="toggle-car" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <div class="setting-group-label">气流</div>
+            <div class="setting-row" data-key="wind">
+                <span class="setting-icon">💨</span>
+                <span class="setting-label">风阻流线</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="toggle-wind" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="setting-row" data-key="headlight">
+                <span class="setting-icon">💡</span>
+                <span class="setting-label">车灯</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="toggle-headlight" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <div class="setting-group-label">速度</div>
+            <div class="setting-row info-row">
+                <div style="display:flex;justify-content:space-between;width:100%;">
+                    <span style="color:rgba(255,255,255,0.5);font-size:0.75rem;">高速巡航</span>
+                    <span class="speed-value" id="speed-high-val">350 km/h</span>
+                </div>
+                <div class="speed-row">
+                    <span style="color:rgba(255,255,255,0.3);font-size:0.65rem;">100</span>
+                    <input type="range" id="speed-high" min="100" max="600" value="350" step="10">
+                    <span style="color:rgba(255,255,255,0.3);font-size:0.65rem;">600</span>
+                </div>
+            </div>
+            <div class="setting-row info-row">
+                <div style="display:flex;justify-content:space-between;width:100%;">
+                    <span style="color:rgba(255,255,255,0.5);font-size:0.75rem;">低速滑行</span>
+                    <span class="speed-value" id="speed-low-val">25 km/h</span>
+                </div>
+                <div class="speed-row">
+                    <span style="color:rgba(255,255,255,0.3);font-size:0.65rem;">5</span>
+                    <input type="range" id="speed-low" min="5" max="80" value="25" step="5">
+                    <span style="color:rgba(255,255,255,0.3);font-size:0.65rem;">80</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="setting-group" style="margin-top:auto;padding-top:16px;border-top:1px solid rgba(255,255,255,0.08);">
+            <div class="setting-row" data-key="reset" style="justify-content:center;opacity:0.6;">
+                <span class="setting-icon">🔄</span>
+                <span class="setting-label">恢复默认设置</span>
+            </div>
+        </div>
+    </div>
     <div class="container">
         <h1>🚆 Momda_X主页</h1>
         <p class="subtitle">选择要打开的网站</p>
@@ -200,39 +618,31 @@
     <script type="module">
         import TrackBuilder from './huoche/TrackBuilder.js';
         import CarModel from './sm_car/CarModel.js';
-        
+
         window.addEventListener('DOMContentLoaded', async () => {
-            // 加载粒子特效
+            // ========== 加载场景 ==========
             const particlesRes = await fetch('effects/particles.html');
             document.body.insertAdjacentHTML('afterbegin', await particlesRes.text());
             const { startParticles } = await import('./effects/particles.js');
-            startParticles();
-            
-            // 加载爱心特效
+
             const heartsRes = await fetch('effects/hearts.html');
             document.body.insertAdjacentHTML('afterbegin', await heartsRes.text());
             const { startHeartAnimation } = await import('./effects/hearts.js');
-            startHeartAnimation();
-            
+
             const railway = new TrackBuilder('train-canvas');
             railway.init();
-            
             window.railTrackSystem = railway;
-            
+
             // 恢复保存的列车模型类型
             (async () => {
                 try {
                     const savedTrainModel = localStorage.getItem('trainModelType');
                     if (savedTrainModel === '16' && railway.train) {
-                        console.log('[初始化] 恢复16节车厢模型');
                         await railway.switchTrainModel('16');
                     }
-                } catch (e) {
-                    console.warn('[初始化] 模型恢复失败:', e);
-                }
+                } catch (e) {}
             })();
-            
-            // 加载汽车模型
+
             const car = new CarModel({
                 scale: 0.6,
                 position: { x: 10, y: 0.3, z: 0 },
@@ -241,8 +651,8 @@
             await car.loadModel();
             railway.scene.add(car.getGroup());
             window.carModel = car;
-            
-            // 加载音乐播放器组件
+
+            // 音乐
             (async () => {
                 const htmlRes = await fetch('music/music.html');
                 const html = await htmlRes.text();
@@ -250,8 +660,226 @@
                 const { initMusicPlayer } = await import('./music/music.js');
                 initMusicPlayer();
             })();
+
+            // ========== 设置面板 ==========
+            const $$ = id => document.getElementById(id);
+            const panel = $$('settings-panel');
+            const overlay = $$('settings-overlay');
+            const toggleBtn = $$('settings-toggle');
+            const isOpen = () => panel.classList.contains('open');
+
+            const openPanel = () => {
+                panel.classList.add('open');
+                overlay.classList.add('active');
+                document.body.classList.add('settings-open');
+            };
+            const closePanel = () => {
+                panel.classList.remove('open');
+                overlay.classList.remove('active');
+                document.body.classList.remove('settings-open');
+            };
+            toggleBtn.addEventListener('click', () => isOpen() ? closePanel() : openPanel());
+            overlay.addEventListener('click', closePanel);
+            document.addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen()) closePanel(); });
+
+            // ---- 设置状态（从 localStorage 恢复） ----
+            const SETTINGS_KEY = 'trainSettings';
+            const defaults = {
+                modelType: '8',
+                particles: true,
+                hearts: true,
+                car: true,
+                wind: true,
+                headlight: true,
+                immersive: false,
+                speedHigh: 350,
+                speedLow: 25,
+            };
+            let settings = { ...defaults };
+            try {
+                const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+                if (saved) Object.assign(settings, saved);
+            } catch (e) {}
+
+            // ---- 特效启用/禁用 ----
+            let particlesRunning = settings.particles;
+            let heartsRunning = settings.hearts;
+            if (settings.particles) startParticles();
+            if (settings.hearts) startHeartAnimation();
+
+            const setParticles = (on) => {
+                const canvas = document.getElementById('particle-canvas');
+                if (canvas) canvas.style.display = on ? '' : 'none';
+                particlesRunning = on;
+            };
+            const setHearts = (on) => {
+                const container = document.querySelector('.bg_heart');
+                if (container) container.style.display = on ? '' : 'none';
+                heartsRunning = on;
+            };
+
+            // ---- 从设置恢复车灯/风阻/速度 ----
+            railway.setHeadlightOn(settings.headlight);
+            // 风阻默认开启，如果设置关闭则切换
+            // 需要等模型加载后设置
+
+            // ---- 同步 UI ----
+            const syncUI = () => {
+                $$('toggle-particles').checked = settings.particles;
+                $$('toggle-hearts').checked = settings.hearts;
+                $$('toggle-car').checked = settings.car;
+                $$('toggle-wind').checked = settings.wind;
+                $$('toggle-headlight').checked = settings.headlight;
+                $$('toggle-immersive').checked = settings.immersive;
+                $$('speed-high').value = settings.speedHigh;
+                $$('speed-low').value = settings.speedLow;
+                $$('speed-high-val').textContent = settings.speedHigh + ' km/h';
+                $$('speed-low-val').textContent = settings.speedLow + ' km/h';
+                // 模型按钮
+                document.querySelectorAll('#settings-panel .model-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.model === settings.modelType);
+                });
+                // 应用沉浸模式
+                document.body.classList.toggle('immersive', settings.immersive);
+            };
+
+            const saveSettings = () => {
+                localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+                syncUI();
+            };
+
+            // ---- 事件监听 ----
+            // 开关行点击
+            panel.addEventListener('click', (e) => {
+                const row = e.target.closest('.setting-row[data-key]');
+                if (!row) return;
+                const key = row.dataset.key;
+
+                // 恢复默认
+                if (key === 'reset') {
+                    settings = { ...defaults };
+                    setParticles(true);
+                    setHearts(true);
+                    railway.setHeadlightOn(true);
+                    railway.setRun(true);
+                    railway.configureLaunch({ V_HIGH: 350, V_LOW: 25 });
+                    if (railway.train) {
+                        if (railway.getTrainModelType() !== '8') railway.switchTrainModel('8');
+                    }
+                    if (railway.train) railway.train.setWindEffectEnabled(true);
+                    if (window.carModel) window.carModel.getGroup().visible = true;
+                    saveSettings();
+                    return;
+                }
+
+                // 只处理有 toggle 的行
+                const toggleEl = row.querySelector('input[type="checkbox"]');
+                if (!toggleEl) return;
+
+                // 反转
+                const newVal = !toggleEl.checked;
+                settings[key] = newVal;
+                toggleEl.checked = newVal;
+                applySetting(key, newVal);
+            });
+
+            const applySetting = (key, value) => {
+                switch (key) {
+                    case 'immersive':
+                        settings.immersive = value;
+                        break;
+                    case 'particles':
+                        settings.particles = value;
+                        setParticles(value);
+                        break;
+                    case 'hearts':
+                        settings.hearts = value;
+                        setHearts(value);
+                        break;
+                    case 'car':
+                        settings.car = value;
+                        if (window.carModel) window.carModel.getGroup().visible = value;
+                        break;
+                    case 'wind':
+                        settings.wind = value;
+                        if (railway.train) railway.train.setWindEffectEnabled(value);
+                        break;
+                    case 'headlight':
+                        settings.headlight = value;
+                        railway.setHeadlightOn(value);
+                        break;
+                }
+                saveSettings();
+            };
+
+            // 速度滑块
+            $$('speed-high').addEventListener('input', () => {
+                settings.speedHigh = +$$('speed-high').value;
+                $$('speed-high-val').textContent = settings.speedHigh + ' km/h';
+            });
+            $$('speed-high').addEventListener('change', () => {
+                railway.configureLaunch({ V_HIGH: settings.speedHigh, V_LOW: settings.speedLow });
+                saveSettings();
+            });
+            $$('speed-low').addEventListener('input', () => {
+                settings.speedLow = +$$('speed-low').value;
+                $$('speed-low-val').textContent = settings.speedLow + ' km/h';
+            });
+            $$('speed-low').addEventListener('change', () => {
+                railway.configureLaunch({ V_HIGH: settings.speedHigh, V_LOW: settings.speedLow });
+                saveSettings();
+            });
+
+            // 模型按钮
+            panel.addEventListener('click', async (e) => {
+                const btn = e.target.closest('.model-btn');
+                if (!btn) return;
+                const modelType = btn.dataset.model;
+                if (modelType === settings.modelType) return;
+                settings.modelType = modelType;
+                document.querySelectorAll('#settings-panel .model-btn').forEach(b =>
+                    b.classList.toggle('active', b.dataset.model === modelType));
+                localStorage.setItem('trainModelType', settings.modelType);
+                saveSettings();
+                await railway.switchTrainModel(modelType);
+                // 模型切换后恢复风阻状态
+                if (railway.train) railway.train.setWindEffectEnabled(settings.wind);
+            });
+
+            // 初始化 UI
+            syncUI();
+            setParticles(settings.particles);
+            setHearts(settings.hearts);
+
+            // 模型加载后应用速度设置
+            const applySpeedSettings = () => {
+                if (railway.train) {
+                    railway.configureLaunch({ V_HIGH: settings.speedHigh, V_LOW: settings.speedLow });
+                    railway.train.setWindEffectEnabled(settings.wind);
+                }
+            };
+            // 延迟应用（等模型加载）
+            setTimeout(applySpeedSettings, 3000);
+
+            // 暴露设置接口
+            window.trainSettings = { settings, applySetting, saveSettings };
+
+            // ---- 沉浸模式：3秒不移动鼠标自动隐藏光标 ----
+            let cursorTimer;
+            document.addEventListener('mousemove', () => {
+                if (!settings.immersive) return;
+                document.body.style.cursor = '';
+                $$('train-canvas').style.cursor = 'grab';
+                clearTimeout(cursorTimer);
+                cursorTimer = setTimeout(() => {
+                    if (settings.immersive) {
+                        document.body.style.cursor = 'none';
+                        $$('train-canvas').style.cursor = 'none';
+                    }
+                }, 3000);
+            });
         });
-        
+
     </script>
 </body>
 </html>

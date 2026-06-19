@@ -288,52 +288,7 @@ export async function initMusicPlayer() {
         }
     });
     
-    // 列车模型切换按钮
-    const trainSwitchBtn = document.getElementById('trainSwitchBtn');
-    
-    // 从 localStorage 恢复按钮状态
-    try {
-        const savedTrainModel = localStorage.getItem('trainModelType');
-        if (savedTrainModel === '16') {
-            trainSwitchBtn.classList.add('active-16');
-        }
-    } catch (e) {
-        // 默认状态：8节车厢
-    }
-    
-    trainSwitchBtn.addEventListener('click', async () => {
-        if (window.railTrackSystem) {
-            const currentType = window.railTrackSystem.getTrainModelType();
-            const newType = currentType === '8' ? '16' : '8';
-            
-            // 显示加载状态
-            trainSwitchBtn.style.opacity = '0.5';
-            trainSwitchBtn.disabled = true;
-            
-            try {
-                await window.railTrackSystem.switchTrainModel(newType);
-                
-                // 更新按钮状态
-                if (newType === '16') {
-                    trainSwitchBtn.classList.add('active-16');
-                } else {
-                    trainSwitchBtn.classList.remove('active-16');
-                }
-                
-                // 保存状态到 localStorage
-                localStorage.setItem('trainModelType', newType);
-                
-                console.log(`列车模型已切换为 ${newType} 节车厢`);
-            } catch (e) {
-                console.error('列车模型切换失败:', e);
-            }
-            
-            // 恢复按钮状态
-            trainSwitchBtn.style.opacity = '1';
-            trainSwitchBtn.disabled = false;
-        }
-    });
-    
+
     // 初始化可视化画布尺寸
     if (visualizerCanvas) {
         visualizerCanvas.width = 120;
