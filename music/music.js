@@ -286,6 +286,11 @@ export async function initMusicPlayer() {
             const newState = !window.railTrackSystem.headlightOn;
             window.railTrackSystem.setHeadlightOn(newState);
             headlightBtn.classList.toggle('active', newState);
+            // 同步设置面板中的车灯开关
+            if (window.trainSettings) {
+                window.trainSettings.settings.headlight = newState;
+                window.trainSettings.saveSettings();
+            }
         }
     });
     

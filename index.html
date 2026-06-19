@@ -807,6 +807,9 @@
                     case 'headlight':
                         settings.headlight = value;
                         railway.setHeadlightOn(value);
+                        // 同步 💡 按钮状态
+                        const headlightBtn = document.getElementById('headlightBtn');
+                        if (headlightBtn) headlightBtn.classList.toggle('active', value);
                         break;
                 }
                 saveSettings();
