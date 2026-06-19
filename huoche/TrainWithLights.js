@@ -250,6 +250,41 @@ export class TrainWithLights {
 
         // 创建两条自发光光束照向前方（不创建 Three.js 光源）
         this._createForwardBeams(dims, zLimit);
+        this._createCabLight();
+    }
+
+    /**
+     * 创建车头驾驶室自发光表面
+     * 使用和车灯相同的方法，通过三角形位置筛选只让车头前端发光
+     */
+    _createCabLight() {
+        if (!this.trainModel) return;
+
+        const dims = this._getLocalDimensions();
+        const frontX = dims.frontX;
+        const minY = dims.bottomY + dims.height * 0.25;
+        const maxY = dims.bottomY + dims.height * 0.75;
+        const zLimit = dims.width * 0.45;
+        // 车头前端阈值：只选择 frontX 往后一定范围内的三角形
+        const cabFrontThreshold = frontX - dims.length * 0.15;
+
+        const surfaces = this._createLampSurfaceMeshes({
+            name: 'cab-light',
+            materialNames: ['Material__57', 'Material__79', 'Material__1775', 'Object016_mso'],
+            color: 0xffffff,
+            emissiveIntensity: this.headlightOn ? 0.3 : 0,// 驾驶室灯光强度
+            opacity: this.headlightOn ? 0.95 : 0.85,
+            triangleMatches: (center) => (
+                // 只选择车头前端位置的三角形
+                center.x >= cabFrontThreshold &&
+                center.x <= frontX + dims.width * 0.15 &&
+                center.y >= minY &&
+                center.y <= maxY &&
+                Math.abs(center.z) <= zLimit
+            )
+        });
+
+        this.cabLights = surfaces;
     }
 
     /**
@@ -703,6 +738,16 @@ export class TrainWithLights {
             this.tailLights.forEach((tailLight) => {
                 tailLight.material.emissiveIntensity = 3.5;
                 tailLight.material.opacity = 1.0;
+            });
+        }
+
+        // 驾驶室灯光跟随车灯开关
+        if (this.cabLights) {
+            const cabIntensity = this.headlightOn ? 0.3 : 0;// 驾驶室灯光强度
+            const cabOpacity = this.headlightOn ? 0.95 : 0.85;
+            this.cabLights.forEach((cabLight) => {
+                cabLight.material.emissiveIntensity = cabIntensity;
+                cabLight.material.opacity = cabOpacity;
             });
         }
 

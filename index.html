@@ -475,6 +475,15 @@
             pointer-events: none !important;
             transition: opacity 0.4s ease;
         }
+        /* 用户主动打开设置面板时，即使在沉浸模式下也要显示 */
+        body.immersive #settings-panel.open {
+            opacity: 1 !important;
+            pointer-events: auto !important;
+        }
+        body.immersive #settings-overlay.active {
+            opacity: 0.35 !important;
+            pointer-events: auto !important;
+        }
 
         /* 沉浸模式下设置按钮变小变透明 */
         body.immersive #settings-toggle {
@@ -535,14 +544,6 @@
                 <span class="collapse-arrow">▼</span>
             </div>
             <div class="setting-group-body">
-            <div class="setting-row" data-key="immersive">
-                <span class="setting-icon">🔍</span>
-                <span class="setting-label">沉浸模式</span>
-                <label class="toggle-switch">
-                    <input type="checkbox" id="toggle-immersive">
-                    <span class="toggle-slider"></span>
-                </label>
-            </div>
             <div class="setting-row" data-key="particles">
                 <span class="setting-icon">✨</span>
                 <span class="setting-label">粒子特效</span>
@@ -568,6 +569,14 @@
                 <span class="collapse-arrow">▼</span>
             </div>
             <div class="setting-group-body">
+            <div class="setting-row" data-key="immersive">
+                <span class="setting-icon">🔍</span>
+                <span class="setting-label">沉浸模式</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="toggle-immersive">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
             </div>
         </div>
 
@@ -644,6 +653,14 @@
                 <span class="collapse-arrow">▼</span>
             </div>
             <div class="setting-group-body">
+            <div class="setting-row">
+                <span class="setting-icon">⏹️</span>
+                <span class="setting-label">停止运行</span>
+                <label class="toggle">
+                    <input type="checkbox" id="stop-train">
+                    <span class="toggle-track"></span>
+                </label>
+            </div>
             <div class="setting-row info-row">
                 <div style="display:flex;justify-content:space-between;width:100%;">
                     <span style="color:rgba(255,255,255,0.5);font-size:0.75rem;">高速巡航</span>
@@ -956,6 +973,16 @@
             $$('speed-low').addEventListener('change', () => {
                 railway.configureLaunch({ V_HIGH: settings.speedHigh, V_LOW: settings.speedLow });
                 saveSettings();
+            });
+
+            // 停止运行开关
+            $$('stop-train').addEventListener('change', (e) => {
+                const isStopped = e.target.checked;
+                if (isStopped) {
+                    railway.setRun(false);
+                } else {
+                    railway.setRun(true);
+                }
             });
 
             // 风阻参数滑块
